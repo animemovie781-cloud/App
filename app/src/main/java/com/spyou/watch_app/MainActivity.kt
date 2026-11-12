@@ -17,6 +17,12 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, true)
+        val savedCrash = java.io.File(filesDir, ZangetsuApp.CRASH_FILE_NAME)
+        if (savedInstanceState == null && savedCrash.exists()) {
+            startActivity(android.content.Intent(this, CrashReportActivity::class.java))
+            finish()
+            return
+        }
         if (savedInstanceState == null && !getSharedPreferences("zangetsu_prefs", MODE_PRIVATE).getBoolean("onboarded", false)) {
             startActivity(android.content.Intent(this, OnboardingActivity::class.java))
             finish()
