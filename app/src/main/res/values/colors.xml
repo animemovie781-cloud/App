@@ -1,0 +1,9 @@
+<resources>
+    <color name="z_bg">#0B0B0F</color>
+    <color name="z_surface">#16161C</color>
+    <color name="z_surface_2">#20212A</color>
+    <color name="z_text_primary">#FFFFFF</color>
+    <color name="z_text_secondary">#A7A7B2</color>
+    <color name="z_text_tertiary">#6E6E78</color>
+    <color name="z_accent">#FF4D57</color>
+</resources>
