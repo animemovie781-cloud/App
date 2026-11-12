@@ -1,12 +1,12 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/z_bg" android:fillViewport="true">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingBottom="24dp">
         <LinearLayout android:layout_width="match_parent" android:layout_height="58dp" android:gravity="center_vertical" android:paddingStart="20dp" android:paddingEnd="20dp">
-            <ImageView android:layout_width="30dp" android:layout_height="30dp" android:src="@drawable/zangetsu_mark" android:contentDescription="Zangetsu logo" />
+            <ImageView android:layout_width="30dp" android:layout_height="30dp" android:src="@drawable/onboarding_logo_mark" android:contentDescription="Zangetsu logo" />
             <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="10dp" android:text="ZANGETSU" android:textColor="@color/z_text_primary" android:textStyle="bold" android:textSize="17sp" android:letterSpacing="0.12" />
             <TextView android:id="@+id/profileButton" android:layout_width="38dp" android:layout_height="38dp" android:gravity="center" android:text="◉" android:textColor="@color/z_text_primary" android:textSize="22sp" />
         </LinearLayout>
         <FrameLayout android:layout_width="match_parent" android:layout_height="440dp" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:background="@drawable/bg_dock">
-            <ImageView android:id="@+id/heroArtwork" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="centerCrop" android:src="@drawable/zangetsu_mark" android:alpha="0.28" />
+            <ImageView android:id="@+id/heroArtwork" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="centerCrop" android:src="@drawable/onboarding_logo_mark" android:alpha="0.28" />
             <View android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/bg_hero_scrim" />
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_gravity="bottom" android:orientation="vertical" android:padding="22dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FEATURED" android:textColor="@color/z_accent" android:textSize="11sp" android:textStyle="bold" android:letterSpacing="0.18" />
