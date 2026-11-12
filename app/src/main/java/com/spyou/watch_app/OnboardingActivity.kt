@@ -85,7 +85,9 @@ class OnboardingActivity : AppCompatActivity() {
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
-            }\n            return Holder(pageRoot)\n        }
+            }
+            return Holder(pageRoot)
+        }
         override fun onBindViewHolder(holder: Holder, position: Int) {
             holder.frame.removeAllViews()
             val page = when (position) { 0 -> welcome(); 1 -> sourceGuide(); else -> ready() }
