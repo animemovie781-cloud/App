@@ -2,9 +2,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:allowBackup="false"
-        android:icon="@drawable/zangetsu_mark"
+        android:icon="@android:drawable/sym_def_app_icon"
         android:label="Zangetsu"
-        android:roundIcon="@drawable/zangetsu_mark"
+        android:roundIcon="@android:drawable/sym_def_app_icon"
         android:supportsRtl="true"
         android:theme="@style/Theme.Zangetsu"
         android:usesCleartextTraffic="false">
