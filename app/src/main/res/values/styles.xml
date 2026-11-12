@@ -1,0 +1,9 @@
+<resources>
+    <style name="DockItem">
+        <item name="android:layout_width">0dp</item><item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item><item name="android:gravity">center</item>
+        <item name="android:textAlignment">center</item><item name="android:textSize">11sp</item>
+        <item name="android:textColor">@color/z_text_secondary</item><item name="android:fontFamily">sans</item>
+        <item name="android:paddingTop">7dp</item><item name="android:paddingBottom">5dp</item>
+    </style>
+</resources>
