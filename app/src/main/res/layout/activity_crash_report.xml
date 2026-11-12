@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0B0B0F"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="App diagnostic"
+        android:textColor="#FFFFFF"
+        android:textSize="25sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Zangetsu detected a previous crash. Copy this report and send it to the developer."
+        android:textColor="#A7A7B2"
+        android:textSize="14sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="22dp"
+        android:text="CRASH DETAILS"
+        android:textColor="#FF4D57"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.08" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="10dp"
+        android:background="#16161C"
+        android:fillViewport="true"
+        android:padding="14dp">
+
+        <TextView
+            android:id="@+id/crashReportText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="No crash report available."
+            android:textColor="#E8E8ED"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:textIsSelectable="true" />
+    </ScrollView>
+
+    <Button
+        android:id="@+id/copyCrashButton"
+        android:layout_width="match_parent"
+        android:layout_height="54dp"
+        android:layout_marginTop="16dp"
+        android:text="Copy crash report"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#FF4D57" />
+
+    <Button
+        android:id="@+id/clearCrashButton"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="8dp"
+        android:text="Clear report &amp; reopen app"
+        android:textAllCaps="false"
+        android:textColor="#A7A7B2"
+        android:backgroundTint="#20212A" />
+</LinearLayout>
