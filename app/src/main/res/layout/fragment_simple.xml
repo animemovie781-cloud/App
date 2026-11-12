@@ -1,0 +1,4 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center" android:padding="28dp" android:background="@color/z_bg">
+    <TextView android:id="@+id/pageTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Search" android:textColor="@color/z_text_primary" android:textSize="26sp" android:textStyle="bold" />
+    <TextView android:id="@+id/pageDescription" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:gravity="center" android:text="Search catalogues and providers" android:textColor="@color/z_text_secondary" android:textSize="14sp" />
+</LinearLayout>
