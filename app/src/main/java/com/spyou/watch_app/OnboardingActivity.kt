@@ -93,8 +93,9 @@ class OnboardingActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0x221F0D12, bg, bg)).apply { shape = GradientDrawable.OVAL }
         }
-        brand.addView(ImageView(this).apply {
-            setImageResource(R.drawable.zangetsu_mark); scaleType = ImageView.ScaleType.FIT_CENTER
+        brand.addView(TextView(this).apply {
+            text = "Z"; textSize = 86f; gravity = Gravity.CENTER
+            setTextColor(-1); typeface = Typeface.SERIF
         }, LinearLayout.LayoutParams(dp(112), dp(112)))
         brand.addView(TextView(this).apply {
             text = "Z A N G E T S U"; textSize = 21f; setTextColor(-1)
