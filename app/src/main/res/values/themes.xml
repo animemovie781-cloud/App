@@ -1,0 +1,12 @@
+<resources>
+    <style name="Theme.Zangetsu" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/z_accent</item>
+        <item name="colorPrimaryVariant">@color/z_accent</item>
+        <item name="colorSecondary">@color/z_accent</item>
+        <item name="android:colorAccent">@color/z_accent</item>
+        <item name="android:windowBackground">@color/z_bg</item>
+        <item name="android:navigationBarColor">@color/z_bg</item>
+        <item name="android:statusBarColor">@color/z_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
