@@ -80,7 +80,12 @@ class OnboardingActivity : AppCompatActivity() {
         override fun getItemCount() = 3
         override fun onCreateViewHolder(parent: ViewGroup, type: Int): Holder {
             // ViewPager2 requires every page root to occupy the full pager viewport.
-            val pageRoot = FrameLayout(this@OnboardingActivity).apply {\n                layoutParams = RecyclerView.LayoutParams(\n                    ViewGroup.LayoutParams.MATCH_PARENT,\n                    ViewGroup.LayoutParams.MATCH_PARENT\n                )\n            }\n            return Holder(pageRoot)\n        }
+            val pageRoot = FrameLayout(this@OnboardingActivity).apply {
+                layoutParams = RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            }\n            return Holder(pageRoot)\n        }
         override fun onBindViewHolder(holder: Holder, position: Int) {
             holder.frame.removeAllViews()
             val page = when (position) { 0 -> welcome(); 1 -> sourceGuide(); else -> ready() }
