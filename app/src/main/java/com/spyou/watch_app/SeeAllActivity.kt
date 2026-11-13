@@ -16,6 +16,8 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
@@ -52,6 +54,11 @@ class SeeAllActivity : AppCompatActivity() {
     private var endReached = false
     private var query = ""
     private var selectedFormat = "Both"
+    private var selectedSort = "Popular"
+    private var selectedYear = "Any"
+    private var selectedMinScore = "Any"
+    private var selectedGenre = "Any"
+    private val genreOptions = linkedMapOf("Action" to 28, "Adventure" to 12, "Animation" to 16, "Comedy" to 35, "Crime" to 80, "Documentary" to 99, "Drama" to 18, "Family" to 10751, "Fantasy" to 14, "History" to 36, "Horror" to 27, "Music" to 10402, "Mystery" to 9648, "Romance" to 10749, "Science Fiction" to 878, "TV Movie" to 10770, "Thriller" to 53, "War" to 10752, "Western" to 37)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -127,13 +134,42 @@ class SeeAllActivity : AppCompatActivity() {
     }
 
     private fun showFilters() {
-        val options = arrayOf("Both", "Movies", "TV Shows")
-        AlertDialog.Builder(this).setTitle("Filter catalogue")
-            .setSingleChoiceItems(options, options.indexOf(selectedFormat)) { dialog, which ->
-                selectedFormat = options[which]; dialog.dismiss(); resetAndLoad()
-            }.setNegativeButton("Cancel", null).show()
+        val sheetDialog = BottomSheetDialog(this)
+        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(10), dp(20), dp(24)); setBackgroundColor(Color.rgb(11, 11, 15)) }
+        content.addView(View(this).apply { background = GradientDrawable().apply { cornerRadius = dp(8).toFloat(); setColor(0xFF292832.toInt()) }; layoutParams = LinearLayout.LayoutParams(dp(56), dp(5)).apply { gravity = Gravity.CENTER; bottomMargin = dp(20) } })
+        content.addView(TextView(this).apply { text = "Filters"; textSize = 21f; setTextColor(Color.WHITE); typeface = Typeface.DEFAULT_BOLD; layoutParams = LinearLayout.LayoutParams(-1, dp(48)) })
+        val fields = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        fun choice(label: String, options: List<String>, current: String, save: (String) -> Unit) {
+            AlertDialog.Builder(this@SeeAllActivity).setTitle(label).setSingleChoiceItems(options.toTypedArray(), options.indexOf(current).coerceAtLeast(0)) { d, which -> save(options[which]); d.dismiss(); sheetDialog.dismiss(); showFilters() }.setNegativeButton("Cancel", null).show()
+        }
+        fun field(label: String, value: String, action: () -> Unit): View {
+            val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(9), dp(14), dp(9)); background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(0xFF19181F.toInt()) }; isClickable = true; isFocusable = true; setOnClickListener { action() } }
+            box.addView(TextView(this).apply { text = label.uppercase(); textSize = 11f; setTextColor(0xFFA7A7B2.toInt()); typeface = Typeface.DEFAULT_BOLD })
+            val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            line.addView(TextView(this).apply { text = value; textSize = 16f; setTextColor(if (value == "Any" || value == "Popular" || value == "Both") Color.WHITE else 0xFFFF4D57.toInt()); typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL); layoutParams = LinearLayout.LayoutParams(0, -2, 1f); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+            line.addView(TextView(this).apply { text = "⌄"; textSize = 22f; setTextColor(0xFFA7A7B2.toInt()) })
+            box.addView(line); return box
+        }
+        fun pair(left: View?, right: View?) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            row.addView(left ?: View(this), LinearLayout.LayoutParams(0, dp(96), 1f).apply { marginEnd = dp(8) })
+            row.addView(right ?: View(this), LinearLayout.LayoutParams(0, dp(96), 1f).apply { marginStart = dp(8) })
+            fields.addView(row)
+        }
+        pair(field("Sort by", selectedSort) { choice("Sort by", listOf("Popular", "Top rated", "Newest", "Oldest", "Title A–Z"), selectedSort) { selectedSort = it } }, field("Year", selectedYear) { choice("Year", listOf("Any") + (2026 downTo 1970).map { it.toString() }, selectedYear) { selectedYear = it } })
+        pair(null, field("Minimum score", selectedMinScore) { choice("Minimum score", listOf("Any", "5.0+", "6.0+", "7.0+", "8.0+", "9.0+"), selectedMinScore) { selectedMinScore = it } })
+        pair(null, field("Format", selectedFormat) { choice("Format", listOf("Both", "Movies", "TV Shows"), selectedFormat) { selectedFormat = it } })
+        fields.addView(field("Genres", selectedGenre) { choice("Genres", listOf("Any") + genreOptions.keys.toList(), selectedGenre) { selectedGenre = it } }, LinearLayout.LayoutParams(-1, dp(96)).apply { topMargin = dp(8) })
+        content.addView(fields)
+        content.addView(TextView(this).apply { text = "Apply"; gravity = Gravity.CENTER; textSize = 17f; setTextColor(Color.WHITE); typeface = Typeface.DEFAULT_BOLD; background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(0xFFFF3155.toInt()) }; layoutParams = LinearLayout.LayoutParams(-1, dp(54)).apply { topMargin = dp(30) }; setOnClickListener { sheetDialog.dismiss(); resetAndLoad() } })
+        sheetDialog.setContentView(content)
+        sheetDialog.setOnShowListener {
+            val sheet = sheetDialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet) ?: return@setOnShowListener
+            sheet.layoutParams.height = (resources.displayMetrics.heightPixels * 0.94f).toInt()
+            val behavior = BottomSheetBehavior.from(sheet); behavior.isFitToContents = false; behavior.halfExpandedRatio = 0.62f; behavior.state = BottomSheetBehavior.STATE_HALF_EXPANDED; behavior.skipCollapsed = false; behavior.isDraggable = true
+        }
+        sheetDialog.show()
     }
-
     private fun resetAndLoad() {
         page = 0; endReached = false; loadingPage = false; items.clear(); seen.clear(); adapter.notifyDataSetChanged()
         loadNextPage()
@@ -164,8 +200,19 @@ class SeeAllActivity : AppCompatActivity() {
             val all = mutableListOf<Entry>()
             var hasMore = false
             types.forEach { kind ->
-                val path = if (query.isBlank()) "/discover/$kind?watch_region=$region&with_watch_providers=$providerId&watch_monetization_types=flatrate&sort_by=popularity.desc&page=$requestPage"
-                    else "/search/$kind?query=${URLEncoder.encode(query, "UTF-8")}&page=$requestPage"
+                val sort = when (selectedSort) {
+                    "Top rated" -> "vote_average.desc"
+                    "Newest" -> if (kind == "movie") "primary_release_date.desc" else "first_air_date.desc"
+                    "Oldest" -> if (kind == "movie") "primary_release_date.asc" else "first_air_date.asc"
+                    "Title A–Z" -> if (kind == "movie") "original_title.asc" else "original_name.asc"
+                    else -> "popularity.desc"
+                }
+                val filters = StringBuilder()
+                if (selectedYear != "Any") filters.append("&").append(if (kind == "movie") "primary_release_year" else "first_air_date_year").append("=").append(selectedYear)
+                if (selectedMinScore != "Any") filters.append("&vote_average.gte=").append(selectedMinScore.removeSuffix("+"))
+                genreOptions[selectedGenre]?.let { filters.append("&with_genres=").append(it) }
+                val path = if (query.isBlank()) "/discover/" + kind + "?watch_region=" + region + "&with_watch_providers=" + providerId + "&watch_monetization_types=flatrate&sort_by=" + sort + "&page=" + requestPage + filters.toString()
+                    else "/search/" + kind + "?query=" + URLEncoder.encode(query, "UTF-8") + "&page=" + requestPage
                 val json = request(path)
                 val results = json.optJSONArray("results") ?: JSONArray()
                 val totalPages = json.optInt("total_pages", 1)
