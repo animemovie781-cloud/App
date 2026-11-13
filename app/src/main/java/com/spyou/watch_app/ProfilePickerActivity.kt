@@ -107,7 +107,7 @@ class ProfilePickerActivity : AppCompatActivity() {
         }
         avatar.background = circle
         val icon = ImageView(this).apply {
-            setImageResource(if (add) android.R.drawable.ic_input_add else android.R.drawable.ic_menu_myplaces)
+            setImageResource(if (add) R.drawable.ic_profile_add else R.drawable.ic_profile_person)
             setColorFilter(android.graphics.Color.WHITE)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             setPadding(dp(30), dp(30), dp(30), dp(30))
