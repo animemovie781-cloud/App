@@ -14,6 +14,9 @@ import androidx.lifecycle.lifecycleScope
 import coil.load
 import com.kanha.dev.databinding.FragmentHomeBinding
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -52,49 +55,94 @@ class HomeMetadataController(
     }
 
     fun load() {
-        binding.heroTitle.text = "Loading $mode…"
-        binding.heroMeta.text = "DISCOVERING CONTENT"
+        // Render a recent snapshot immediately; refresh it without blocking first paint.
+        val cached = readCachedRows()
+        if (cached.isNotEmpty()) renderRows(cached)
+        else {
+            binding.heroTitle.text = "Loading $mode…"
+            binding.heroMeta.text = "DISCOVERING CONTENT"
+        }
         owner.lifecycleScope.launch {
             try {
                 val rows = withContext(Dispatchers.IO) {
                     if (isVideo) loadTmdbRows() else loadAniListRows()
                 }
-                if (rows.isEmpty()) {
+                if (rows.isNotEmpty()) {
+                    writeCachedRows(rows)
+                    renderRows(rows)
+                } else if (cached.isEmpty()) {
                     binding.heroTitle.text = "No metadata available"
                     binding.heroMeta.text = "CHECK YOUR INTERNET CONNECTION"
-                    return@launch
                 }
-                val first = rows.first()
-                val featured = first.second.take(6)
-                binding.heroPager.adapter = HeroAdapter(featured)
-                binding.heroPager.offscreenPageLimit = 1
-                binding.heroTitle.text = featured.firstOrNull()?.title ?: first.first
-                binding.heroMeta.text = listOfNotNull(mode.uppercase(), featured.firstOrNull()?.year?.takeIf { it.isNotBlank() }, featured.firstOrNull()?.score?.takeIf { it.isNotBlank() }?.let { "★ $it" }).joinToString("  ·  ")
-                binding.heroDetails.setOnClickListener {
-                    Toast.makeText(binding.root.context, first.second.firstOrNull()?.title ?: first.first, Toast.LENGTH_SHORT).show()
-                }
-                renderDots(featured.size)
-                binding.heroPager.registerOnPageChangeCallback(object : androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback() {
-                    override fun onPageSelected(position: Int) {
-                        val item = featured.getOrNull(position) ?: return
-                        binding.heroTitle.text = item.title
-                        binding.heroMeta.text = listOf(mode.uppercase(), item.year, item.score.takeIf { it.isNotBlank() }?.let { "★ $it" }).filterNotNull().joinToString("  ·  ")
-                        renderDots(featured.size, position)
-                    }
-                })
-                binding.recentHeading.text = first.first
-                renderPosters(binding.recentPosters, first.second)
-                val second = rows.getOrNull(1)
-                if (second != null) {
-                    renderPosters(binding.popularPosters, second.second)
-                }
-                first.second.firstOrNull()?.let { binding.scheduleArt.load(it.cover) { allowHardware(false); crossfade(true) } }
-                (second?.second?.firstOrNull() ?: first.second.getOrNull(1))?.let { binding.genresArt.load(it.cover) { allowHardware(false); crossfade(true) } }
             } catch (e: Exception) {
-                binding.heroTitle.text = "Metadata couldn't load"
-                binding.heroMeta.text = e.message?.take(90) ?: "PLEASE TRY AGAIN"
+                if (cached.isEmpty()) {
+                    binding.heroTitle.text = "Metadata couldn't load"
+                    binding.heroMeta.text = e.message?.take(90) ?: "PLEASE TRY AGAIN"
+                }
             }
         }
+    }
+
+    private fun renderRows(rows: List<Pair<String, List<Media>>>) {
+        if (rows.isEmpty()) return
+        val first = rows.first()
+        val featured = first.second.take(6)
+        binding.heroPager.adapter = HeroAdapter(featured)
+        binding.heroPager.offscreenPageLimit = 1
+        binding.heroTitle.text = featured.firstOrNull()?.title ?: first.first
+        binding.heroMeta.text = listOfNotNull(mode.uppercase(), featured.firstOrNull()?.year?.takeIf { it.isNotBlank() }, featured.firstOrNull()?.score?.takeIf { it.isNotBlank() }?.let { "★ $it" }).joinToString("  ·  ")
+        binding.heroDetails.setOnClickListener {
+            Toast.makeText(binding.root.context, first.second.firstOrNull()?.title ?: first.first, Toast.LENGTH_SHORT).show()
+        }
+        renderDots(featured.size)
+        binding.heroPager.registerOnPageChangeCallback(object : androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                val item = featured.getOrNull(position) ?: return
+                binding.heroTitle.text = item.title
+                binding.heroMeta.text = listOf(mode.uppercase(), item.year, item.score.takeIf { it.isNotBlank() }?.let { "★ $it" }).filterNotNull().joinToString("  ·  ")
+                renderDots(featured.size, position)
+            }
+        })
+        binding.recentHeading.text = first.first
+        renderPosters(binding.recentPosters, first.second)
+        val second = rows.getOrNull(1)
+        if (second != null) renderPosters(binding.popularPosters, second.second)
+        first.second.firstOrNull()?.let { binding.scheduleArt.load(it.cover) { allowHardware(false); crossfade(true) } }
+        (second?.second?.firstOrNull() ?: first.second.getOrNull(1))?.let { binding.genresArt.load(it.cover) { allowHardware(false); crossfade(true) } }
+    }
+
+    private fun cachePrefs() = binding.root.context.getSharedPreferences("zangetsu_metadata_cache", android.content.Context.MODE_PRIVATE)
+
+    private fun readCachedRows(): List<Pair<String, List<Media>>> {
+        return try {
+            val raw = cachePrefs().getString("home_$contentKind", null) ?: return emptyList()
+            val savedAt = cachePrefs().getLong("home_${contentKind}_time", 0L)
+            if (System.currentTimeMillis() - savedAt > 6 * 60 * 60 * 1000L) return emptyList()
+            val array = org.json.JSONArray(raw)
+            (0 until array.length()).mapNotNull { i ->
+                val row = array.optJSONObject(i) ?: return@mapNotNull null
+                val items = row.optJSONArray("items") ?: return@mapNotNull null
+                val media = (0 until items.length()).mapNotNull { j ->
+                    val m = items.optJSONObject(j) ?: return@mapNotNull null
+                    Media(m.optString("id"), m.optString("title"), m.optString("cover"), m.optString("banner").takeIf { it.isNotBlank() && it != "null" }, m.optString("score"), m.optString("description"), m.optString("year"), m.optString("genres"), m.optString("mediaType"))
+                }
+                if (media.isEmpty()) null else row.optString("title") to media
+            }
+        } catch (_: Exception) { emptyList() }
+    }
+
+    private fun writeCachedRows(rows: List<Pair<String, List<Media>>>) {
+        try {
+            val array = org.json.JSONArray()
+            rows.forEach { (title, items) ->
+                val media = org.json.JSONArray()
+                items.forEach { m ->
+                    media.put(JSONObject().put("id", m.id).put("title", m.title).put("cover", m.cover).put("banner", m.banner).put("score", m.score).put("description", m.description).put("year", m.year).put("genres", m.genres).put("mediaType", m.mediaType))
+                }
+                array.put(JSONObject().put("title", title).put("items", media))
+            }
+            cachePrefs().edit().putString("home_$contentKind", array.toString()).putLong("home_${contentKind}_time", System.currentTimeMillis()).apply()
+        } catch (_: Exception) { }
     }
 
     private fun renderDots(count: Int, active: Int = 0) {
@@ -226,7 +274,7 @@ class HomeMetadataController(
             "", o.optInt("seasonYear").takeIf { it > 0 }?.toString().orEmpty(), genreText, contentKind)
     }
 
-    private fun loadTmdbRows(): List<Pair<String, List<Media>>> {
+    private suspend fun loadTmdbRows(): List<Pair<String, List<Media>>> = coroutineScope {
         val endpoints = listOf(
             "Now playing" to "/movie/now_playing",
             "Airing now" to "/tv/on_the_air",
@@ -234,34 +282,37 @@ class HomeMetadataController(
             "Popular movies" to "/movie/popular",
             "Popular series" to "/tv/popular"
         )
-        return endpoints.mapNotNull { (label, path) ->
-            val json = tmdbRequest(path)
-            val results = json.optJSONArray("results") ?: return@mapNotNull null
-            val items = (0 until results.length()).mapNotNull { i ->
-                val o = results.optJSONObject(i) ?: return@mapNotNull null
-                val type = o.optString("media_type").ifBlank {
-                    if (path.startsWith("/tv/")) "tv" else if (path.startsWith("/movie/")) "movie" else "movie"
-                }
-                val title = o.optString("title").ifBlank { o.optString("name") }
-                val poster = o.optString("poster_path")
-                if (title.isBlank() || poster.isBlank()) return@mapNotNull null
-                val backdrop = o.optString("backdrop_path").takeIf { it.isNotBlank() && it != "null" }?.let { "https://image.tmdb.org/t/p/w1280$it" }
-                val genres = o.optJSONArray("genre_ids")
-                Media(o.optString("id"), title, "https://image.tmdb.org/t/p/w500$poster", backdrop,
-                    o.optDouble("vote_average").takeIf { it > 0 }?.let { "%.1f".format(it) }.orEmpty(),
-                    o.optString("overview"), o.optString("release_date").ifBlank { o.optString("first_air_date") }.take(4),
-                    genres?.let { a -> (0 until a.length()).joinToString(" · ") { a.optString(it) } }.orEmpty(), type)
+        endpoints.map { row -> async(Dispatchers.IO) { fetchTmdbRow(row.first, row.second) } }
+            .awaitAll().filterNotNull()
+    }
+
+    private fun fetchTmdbRow(label: String, path: String): Pair<String, List<Media>>? {
+        val json = tmdbRequest(path)
+        val results = json.optJSONArray("results") ?: return null
+        val items = (0 until results.length()).mapNotNull { i ->
+            val o = results.optJSONObject(i) ?: return@mapNotNull null
+            val type = o.optString("media_type").ifBlank {
+                if (path.startsWith("/tv/")) "tv" else if (path.startsWith("/movie/")) "movie" else "movie"
             }
-            if (items.isEmpty()) null else label to items
+            val title = o.optString("title").ifBlank { o.optString("name") }
+            val poster = o.optString("poster_path")
+            if (title.isBlank() || poster.isBlank()) return@mapNotNull null
+            val backdrop = o.optString("backdrop_path").takeIf { it.isNotBlank() && it != "null" }?.let { "https://image.tmdb.org/t/p/w1280$it" }
+            val genres = o.optJSONArray("genre_ids")
+            Media(o.optString("id"), title, "https://image.tmdb.org/t/p/w500$poster", backdrop,
+                o.optDouble("vote_average").takeIf { it > 0 }?.let { "%.1f".format(it) }.orEmpty(),
+                o.optString("overview"), o.optString("release_date").ifBlank { o.optString("first_air_date") }.take(4),
+                genres?.let { a -> (0 until a.length()).joinToString(" · ") { a.optString(it) } }.orEmpty(), type)
         }
+        return if (items.isEmpty()) null else label to items
     }
 
     private fun aniListRequest(query: String): JSONObject {
         val body = JSONObject().put("query", query)
         val connection = URL("https://graphql.anilist.co").openConnection() as HttpURLConnection
         connection.requestMethod = "POST"
-        connection.connectTimeout = 12000
-        connection.readTimeout = 20000
+        connection.connectTimeout = 6000
+        connection.readTimeout = 9000
         connection.doOutput = true
         connection.setRequestProperty("Content-Type", "application/json")
         connection.setRequestProperty("Accept", "application/json")
@@ -283,8 +334,8 @@ class HomeMetadataController(
             try {
                 val url = "$host$path?api_key=$TMDB_API_KEY&language=en-US&page=1"
                 val connection = URL(url).openConnection() as HttpURLConnection
-                connection.connectTimeout = 10000
-                connection.readTimeout = 15000
+                connection.connectTimeout = 5000
+                connection.readTimeout = 8000
                 connection.setRequestProperty("Accept", "application/json")
                 val stream = if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream
                 val text = stream.bufferedReader().use { it.readText() }
