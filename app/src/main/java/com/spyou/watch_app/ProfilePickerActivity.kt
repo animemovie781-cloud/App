@@ -4,6 +4,8 @@ import android.content.Intent
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.GridLayout
@@ -14,14 +16,38 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.lifecycleScope
+import coil.ImageLoader
+import coil.request.ImageRequest
 import com.google.android.material.button.MaterialButton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
-/** Profile chooser recreated from the original Flutter viewer profile picker. */
+/** Profile chooser and rotating artwork, following viewer_profiles_screen.dart. */
 class ProfilePickerActivity : AppCompatActivity() {
     private val prefs by lazy { getSharedPreferences("zangetsu_profiles", MODE_PRIVATE) }
     private lateinit var grid: GridLayout
     private lateinit var subtitle: TextView
+    private lateinit var backdrop: ImageView
     private var managing = false
+    private val artworkHandler = Handler(Looper.getMainLooper())
+    private var artworkUrls: List<String> = emptyList()
+    private var artworkIndex = 0
+    private var currentArtwork: String? = null
+    private val imageLoader by lazy { ImageLoader.Builder(this).crossfade(900).build() }
+
+    private val rotateArtwork = object : Runnable {
+        override fun run() {
+            if (artworkUrls.size > 1 && !isFinishing && !isDestroyed) {
+                showNextArtwork()
+                artworkHandler.postDelayed(this, 3_000L)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,12 +60,114 @@ class ProfilePickerActivity : AppCompatActivity() {
         setContentView(R.layout.activity_profile_picker)
         grid = findViewById(R.id.profileGrid)
         subtitle = findViewById(R.id.profileSubtitle)
+        backdrop = findViewById(R.id.profileBackdrop)
+
+        // Original Flutter picker shows portrait artwork through roughly the top 60%.
+        backdrop.layoutParams = backdrop.layoutParams.apply {
+            height = (resources.displayMetrics.heightPixels * 0.62f).toInt()
+        }
+        backdrop.visibility = View.VISIBLE
+        backdrop.alpha = 0f
+
         findViewById<MaterialButton>(R.id.manageProfiles).setOnClickListener {
             managing = !managing
             renderProfiles()
             Toast.makeText(this, if (managing) "Tap a profile to remove it" else "Profile management closed", Toast.LENGTH_SHORT).show()
         }
         renderProfiles()
+        loadProfilePickerArtwork()
+    }
+
+    private fun loadProfilePickerArtwork() {
+        // Match ProfilePickerArtwork.cachedUrl: keep the last successful image for offline launch.
+        prefs.getString("profile_picker_artwork_last_url", null)?.let { cached ->
+            if (isAllowedArtworkUrl(cached)) showArtwork(cached)
+        }
+        lifecycleScope.launch {
+            val urls = withContext(Dispatchers.IO) {
+                fetchArtworkManifest()
+            }
+            if (urls.isNotEmpty() && !isFinishing) {
+                artworkUrls = urls
+                val cached = prefs.getString("profile_picker_artwork_last_url", null)
+                artworkIndex = urls.indexOf(cached).let { if (it >= 0) (it + 1) % urls.size else 0 }
+                if (currentArtwork == null) showNextArtwork()
+                if (urls.size > 1) artworkHandler.postDelayed(rotateArtwork, 3_000L)
+            }
+        }
+    }
+
+    private fun fetchArtworkManifest(): List<String> {
+        val connection = (URL(ARTWORK_MANIFEST_URL).openConnection() as HttpURLConnection)
+        return try {
+            connection.connectTimeout = 4_000
+            connection.readTimeout = 4_000
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("Accept", "application/json")
+            connection.connect()
+            if (connection.responseCode !in 200..299) return emptyList()
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            val names = JSONObject(body).optJSONArray("images") ?: return emptyList()
+            buildList {
+                for (i in 0 until minOf(names.length(), 3)) {
+                    val name = names.optString(i)
+                    if (FILE_NAME.matches(name)) add("$ARTWORK_BASE_URL/$name")
+                }
+            }
+        } catch (_: Exception) {
+            emptyList()
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun isAllowedArtworkUrl(value: String): Boolean {
+        return try {
+            val uri = android.net.Uri.parse(value)
+            uri.scheme == "https" &&
+                uri.host == "avatars.zangetsu.online" &&
+                uri.pathSegments.size == 2 &&
+                uri.pathSegments[0] == "profile-picker" &&
+                FILE_NAME.matches(uri.lastPathSegment.orEmpty()) &&
+                uri.query == null
+        } catch (_: Exception) { false }
+    }
+
+    private fun showNextArtwork() {
+        if (artworkUrls.isEmpty()) return
+        val url = artworkUrls[artworkIndex % artworkUrls.size]
+        artworkIndex = (artworkIndex + 1) % artworkUrls.size
+        prefs.edit().putString("profile_picker_artwork_last_url", url).apply()
+        showArtwork(url)
+    }
+
+    private fun showArtwork(url: String) {
+        if (!isAllowedArtworkUrl(url) || url == currentArtwork) return
+        val request = ImageRequest.Builder(this)
+            .data(url)
+            .target(
+                onStart = { },
+                onSuccess = { drawable ->
+                    if (isFinishing || isDestroyed) return@target
+                    backdrop.setImageDrawable(drawable)
+                    backdrop.visibility = View.VISIBLE
+                    backdrop.alpha = 0f
+                    backdrop.translationX = dp(12).toFloat()
+                    backdrop.scaleX = 1.04f
+                    backdrop.scaleY = 1.04f
+                    backdrop.animate().alpha(1f).translationX(0f).scaleX(1f).scaleY(1f)
+                        .setDuration(900L).start()
+                    currentArtwork = url
+                },
+                onError = { }
+            )
+            .build()
+        imageLoader.enqueue(request)
+    }
+
+    override fun onDestroy() {
+        artworkHandler.removeCallbacks(rotateArtwork)
+        super.onDestroy()
     }
 
     private fun profileNames(): MutableList<String> {
@@ -165,4 +293,10 @@ class ProfilePickerActivity : AppCompatActivity() {
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
     private class FrameAvatar(context: android.content.Context) : android.widget.FrameLayout(context)
+
+    companion object {
+        private const val ARTWORK_MANIFEST_URL = "https://avatars.zangetsu.online/profile-picker/manifest.json"
+        private const val ARTWORK_BASE_URL = "https://avatars.zangetsu.online/profile-picker"
+        private val FILE_NAME = Regex("^[a-zA-Z0-9_-]{1,64}\\.(?:webp|png|jpe?g)$", RegexOption.IGNORE_CASE)
+    }
 }
