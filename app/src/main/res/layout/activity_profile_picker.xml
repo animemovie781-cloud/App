@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/bg_profile_picker">
+    <View android:layout_width="match_parent" android:layout_height="match_parent"
+        android:background="@drawable/bg_hero_scrim" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical" android:gravity="center_horizontal"
+        android:paddingStart="24dp" android:paddingEnd="24dp">
+        <Space android:layout_width="1dp" android:layout_height="0dp" android:layout_weight="1.12"/>
+        <TextView android:id="@+id/profileTitle" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="Who's watching?"
+            android:textColor="@color/z_text_primary" android:textSize="28sp"
+            android:fontFamily="sans" android:textStyle="bold" android:gravity="center"
+            android:includeFontPadding="false"/>
+        <TextView android:id="@+id/profileSubtitle" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:layout_marginTop="10dp"
+            android:text="Ready for the next watch, Home?" android:textColor="@color/z_text_secondary"
+            android:textSize="15sp" android:gravity="center" android:includeFontPadding="false"/>
+        <GridLayout android:id="@+id/profileGrid" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="34dp"
+            android:columnCount="2" android:rowCount="3" android:alignmentMode="alignMargins"
+            android:useDefaultMargins="false"/>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/manageProfiles" android:layout_width="wrap_content"
+            android:layout_height="52dp" android:layout_marginTop="58dp"
+            android:text="✎   Manage profiles" android:textAllCaps="false"
+            android:textSize="14sp" android:textColor="@color/z_text_primary"
+            android:backgroundTint="@android:color/transparent"
+            app:cornerRadius="28dp" app:strokeColor="#FF24242D" app:strokeWidth="1dp"
+            android:insetTop="0dp" android:insetBottom="0dp"/>
+        <Space android:layout_width="1dp" android:layout_height="0dp" android:layout_weight="0.85"/>
+    </LinearLayout>
+</FrameLayout>
