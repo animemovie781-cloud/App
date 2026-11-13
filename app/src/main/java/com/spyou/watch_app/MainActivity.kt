@@ -169,7 +169,7 @@ class MainActivity : AppCompatActivity() {
             }
             list.addView(row)
         }
-        glass.addView(list, BlurView.LayoutParams(-1, -2))
+        glass.addView(list, FrameLayout.LayoutParams(-1, -2))
         modePopup = PopupWindow(glass, dp(250), -2, true).apply {
             isOutsideTouchable = true
             setBackgroundDrawable(GradientDrawable().apply { setColor(Color.TRANSPARENT) })
