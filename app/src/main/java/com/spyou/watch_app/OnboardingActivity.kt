@@ -132,11 +132,15 @@ class OnboardingActivity : AppCompatActivity() {
             scaleType = ImageView.ScaleType.FIT_CENTER
             contentDescription = "Zangetsu logo"
         }, LinearLayout.LayoutParams(dp(92), dp(92)))
-        brand.addView(ImageView(this).apply {
-            setImageResource(R.drawable.onboarding_wordmark)
-            scaleType = ImageView.ScaleType.FIT_CENTER
+        brand.addView(TextView(this).apply {
+            text = "Z A N G E T S U"
+            textSize = 21f
+            typeface = Typeface.SERIF
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            setTextColor(-1)
             contentDescription = "Zangetsu wordmark"
-        }, LinearLayout.LayoutParams(dp(164), dp(42)).apply { topMargin = dp(16) })
+        }, LinearLayout.LayoutParams(dp(220), dp(42)).apply { topMargin = dp(16) })
         content.addView(brand, LinearLayout.LayoutParams(dp(260), dp(260)))
         content.addView(space(34))
         content.addView(label("Good to have you here.", 22f, 1.15f, -1, true), wrap())
