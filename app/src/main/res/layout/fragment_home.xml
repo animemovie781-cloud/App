@@ -7,7 +7,7 @@
         android:fillViewport="false" android:scrollbars="none">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="vertical" android:paddingBottom="100dp">
-            <FrameLayout android:layout_width="match_parent" android:layout_height="560dp">
+            <FrameLayout android:id="@+id/heroSection" android:layout_width="match_parent" android:layout_height="560dp">
                 <androidx.viewpager2.widget.ViewPager2 android:id="@+id/heroPager"
                     android:layout_width="match_parent" android:layout_height="match_parent"/>
                 <View android:layout_width="match_parent" android:layout_height="match_parent"
@@ -42,7 +42,7 @@
                         android:background="@drawable/bg_home_details_button" android:text="View Details"
                         android:textColor="#FF0B0B0F" android:textSize="16sp" android:textStyle="bold"/>
                     <LinearLayout android:id="@+id/heroDots" android:layout_width="wrap_content"
-                        android:layout_height="18dp" android:layout_marginTop="56dp"
+                        android:layout_height="18dp" android:layout_marginTop="18dp"
                         android:gravity="center" android:orientation="horizontal"/>
                 </LinearLayout>
             </FrameLayout>
