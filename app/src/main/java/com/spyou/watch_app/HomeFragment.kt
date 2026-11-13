@@ -27,7 +27,7 @@ class HomeFragment : Fragment() {
     private val heroTimer = object : Runnable {
         override fun run() {
             val pager = _binding?.heroPager ?: return
-            if (pager.adapter?.itemCount ?: 0 > 1) {
+            if ((pager.adapter?.itemCount ?: 0) > 1) {
                 pager.setCurrentItem((currentPage + 1) % pager.adapter!!.itemCount, true)
                 heroHandler.postDelayed(this, 5_000L)
             }
