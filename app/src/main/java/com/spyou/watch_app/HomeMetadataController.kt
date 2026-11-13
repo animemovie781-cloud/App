@@ -91,7 +91,7 @@ class HomeMetadataController(
             label?.let { text ->
                 val drawables = text.compoundDrawablesRelative
                 val icon = drawables[0]
-                icon?.setBounds(0, 0, dp(20), dp(20))
+                icon?.setBounds(0, 0, dp(18), dp(18))
                 text.setCompoundDrawablesRelative(icon, drawables[1], drawables[2], drawables[3])
                 text.compoundDrawablePadding = dp(8)
             }
