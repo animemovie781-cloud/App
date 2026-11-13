@@ -260,7 +260,7 @@ class OnboardingActivity : AppCompatActivity() {
         isFillViewport = true
         clipToPadding = false
         overScrollMode = View.OVER_SCROLL_NEVER
-        addView(content, ScrollView.LayoutParams(-1, -2))
+        addView(content, FrameLayout.LayoutParams(-1, -2))
     }
 
     private fun addSourcesNow() = finishOnboarding(true)
