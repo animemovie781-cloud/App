@@ -268,7 +268,7 @@ class OnboardingActivity : AppCompatActivity() {
     private fun finishOnboarding(openProviders: Boolean = false) {
         getSharedPreferences("zangetsu_prefs", MODE_PRIVATE).edit()
             .putBoolean("onboarded", true).apply()
-        startActivity(Intent(this, MainActivity::class.java).apply {
+        startActivity(Intent(this, ProfilePickerActivity::class.java).apply {
             if (openProviders) putExtra("open_providers", true)
         })
         finish()
