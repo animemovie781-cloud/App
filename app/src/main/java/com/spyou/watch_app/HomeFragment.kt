@@ -63,7 +63,6 @@ class HomeFragment : Fragment() {
         binding.actionNotifications.setOnClickListener { Toast.makeText(requireContext(), "Notifications", Toast.LENGTH_SHORT).show() }
         binding.recentSeeAll.setOnClickListener { Toast.makeText(requireContext(), "Recently released", Toast.LENGTH_SHORT).show() }
         addEmptyState(binding.recentPosters)
-        addEmptyState(binding.popularPosters)
     }
 
     private fun renderDots(active: Int) {

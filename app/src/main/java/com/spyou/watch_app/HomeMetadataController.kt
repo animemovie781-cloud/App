@@ -148,7 +148,7 @@ class HomeMetadataController(
             val posters = LinearLayout(binding.root.context).apply {
                 orientation = LinearLayout.HORIZONTAL
             }
-            scroller.addView(posters, android.widget.HorizontalScrollView.LayoutParams(-2, -2))
+            scroller.addView(posters, ViewGroup.LayoutParams(-2, -2))
             renderPosters(posters, items)
             host.addView(scroller, LinearLayout.LayoutParams(-1, -2))
         }
@@ -353,8 +353,8 @@ class HomeMetadataController(
                 "Upcoming next season" to "sort:POPULARITY_DESC,season:$nextSeason,seasonYear:$nextYear,status:NOT_YET_RELEASED",
                 "All-time popular" to "sort:POPULARITY_DESC",
                 "Top rated" to "sort:SCORE_DESC",
-                "Action" to "genre_in:[\\"Action\\"],sort:POPULARITY_DESC",
-                "Romance" to "genre_in:[\\"Romance\\"],sort:POPULARITY_DESC"
+                "Action" to """genre_in:[\"Action\"],sort:POPULARITY_DESC""",
+                "Romance" to """genre_in:[\"Romance\"],sort:POPULARITY_DESC"""
             )
         } else listOf(
             "Recently released" to "sort:START_DATE_DESC,status_in:[RELEASING,FINISHED],popularity_greater:${if (contentKind == "novel") 50 else 1000}",
