@@ -42,8 +42,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         binding.bottomDock.setupWith(binding.root as ViewGroup)
             .setFrameClearDrawable(binding.root.background)
-            .setBlurRadius(22f)
-            .setOverlayColor(Color.argb(12, 255, 255, 255))
+            // Flutter's liquid nav uses a subtle blur (3), not a frosted
+            // sheet.  A radius of 22 made the native port look like a grey box.
+            .setBlurRadius(5f)
+            .setOverlayColor(Color.argb(5, 255, 255, 255))
         binding.navHome.setOnClickListener { showTab(Tab.HOME) }
         binding.navSearch.setOnClickListener { showTab(Tab.LIBRARY) }
         binding.navLibrary.setOnClickListener { showTab(Tab.SEARCH) }
