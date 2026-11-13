@@ -1,26 +1,89 @@
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/z_bg" android:fillViewport="true">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingBottom="24dp">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="58dp" android:gravity="center_vertical" android:paddingStart="20dp" android:paddingEnd="20dp">
-            <ImageView android:layout_width="30dp" android:layout_height="30dp" android:src="@drawable/onboarding_logo_mark" android:contentDescription="Zangetsu logo" />
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="10dp" android:text="ZANGETSU" android:textColor="@color/z_text_primary" android:textStyle="bold" android:textSize="17sp" android:letterSpacing="0.12" />
-            <TextView android:id="@+id/profileButton" android:layout_width="38dp" android:layout_height="38dp" android:gravity="center" android:text="◉" android:textColor="@color/z_text_primary" android:textSize="22sp" />
-        </LinearLayout>
-        <FrameLayout android:layout_width="match_parent" android:layout_height="440dp" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:background="@drawable/bg_dock">
-            <ImageView android:id="@+id/heroArtwork" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="centerCrop" android:src="@drawable/onboarding_logo_mark" android:alpha="0.28" />
-            <View android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/bg_hero_scrim" />
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_gravity="bottom" android:orientation="vertical" android:padding="22dp">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FEATURED" android:textColor="@color/z_accent" android:textSize="11sp" android:textStyle="bold" android:letterSpacing="0.18" />
-                <TextView android:id="@+id/heroTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Discover your next story" android:textColor="@color/z_text_primary" android:textSize="30sp" android:textStyle="bold" />
-                <TextView android:id="@+id/heroMeta" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Anime  •  Movies  •  Series  •  Manga" android:textColor="@color/z_text_secondary" android:textSize="13sp" />
-                <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="18dp" android:orientation="horizontal">
-                    <Button android:id="@+id/heroPlay" android:layout_width="wrap_content" android:layout_height="match_parent" android:text="▶  Explore" android:textAllCaps="false" />
-                    <Button android:id="@+id/heroInfo" android:layout_width="wrap_content" android:layout_height="match_parent" android:layout_marginStart="10dp" android:text="ⓘ  Details" android:textAllCaps="false" android:backgroundTint="@color/z_surface_2" />
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/z_bg">
+    <ScrollView android:id="@+id/homeScroll" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:clipToPadding="false"
+        android:fillViewport="false" android:scrollbars="none">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:paddingBottom="100dp">
+            <FrameLayout android:layout_width="match_parent" android:layout_height="560dp">
+                <androidx.viewpager2.widget.ViewPager2 android:id="@+id/heroPager"
+                    android:layout_width="match_parent" android:layout_height="match_parent"/>
+                <View android:layout_width="match_parent" android:layout_height="match_parent"
+                    android:background="@drawable/bg_home_hero_scrim"/>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:gravity="center_vertical"
+                    android:paddingStart="20dp" android:paddingEnd="20dp"
+                    android:layout_gravity="top" android:layout_marginTop="32dp">
+                    <ImageView android:layout_width="36dp" android:layout_height="36dp"
+                        android:src="@drawable/onboarding_logo_mark" android:contentDescription="Zangetsu"/>
+                    <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
+                    <TextView android:id="@+id/actionDownloads" style="@style/HomeHeaderAction" android:text="↓"/>
+                    <TextView android:id="@+id/actionNotifications" style="@style/HomeHeaderAction" android:text="♧"/>
+                    <TextView android:id="@+id/actionSearch" style="@style/HomeHeaderAction" android:text="⌕"/>
+                </LinearLayout>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:gravity="center_horizontal"
+                    android:layout_gravity="bottom" android:paddingStart="28dp"
+                    android:paddingEnd="28dp" android:paddingBottom="24dp">
+                    <TextView android:id="@+id/heroTitle" android:layout_width="match_parent"
+                        android:layout_height="wrap_content" android:gravity="center"
+                        android:text="Connect a source to discover anime"
+                        android:textColor="@color/z_text_primary" android:textSize="25sp"
+                        android:textStyle="bold" android:includeFontPadding="false"/>
+                    <TextView android:id="@+id/heroMeta" android:layout_width="match_parent"
+                        android:layout_height="wrap_content" android:layout_marginTop="14dp"
+                        android:gravity="center" android:text="ANIME  ·  MOVIES  ·  SERIES"
+                        android:textColor="#D0FFFFFF" android:textSize="11sp" android:letterSpacing="0.22"/>
+                    <TextView android:id="@+id/heroDetails" android:layout_width="wrap_content"
+                        android:layout_height="52dp" android:layout_marginTop="26dp"
+                        android:gravity="center" android:paddingStart="44dp" android:paddingEnd="44dp"
+                        android:background="@drawable/bg_home_details_button" android:text="View Details"
+                        android:textColor="#FF0B0B0F" android:textSize="16sp" android:textStyle="bold"/>
+                    <LinearLayout android:id="@+id/heroDots" android:layout_width="wrap_content"
+                        android:layout_height="18dp" android:layout_marginTop="56dp"
+                        android:gravity="center" android:orientation="horizontal"/>
+                </LinearLayout>
+            </FrameLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp">
+                <LinearLayout android:id="@+id/scheduleCard" style="@style/HomeShortcutCard"
+                    android:layout_width="0dp" android:layout_weight="1" android:layout_marginEnd="10dp">
+                    <TextView style="@style/HomeShortcutText" android:text="▣   Schedule &amp; lists"/>
+                </LinearLayout>
+                <LinearLayout android:id="@+id/genresCard" style="@style/HomeShortcutCard"
+                    android:layout_width="0dp" android:layout_weight="1" android:layout_marginStart="10dp">
+                    <TextView style="@style/HomeShortcutText" android:text="◇   Genres"/>
                 </LinearLayout>
             </LinearLayout>
-        </FrameLayout>
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="20dp" android:layout_marginTop="26dp" android:text="Continue watching" android:textColor="@color/z_text_primary" android:textSize="20sp" android:textStyle="bold" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="20dp" android:layout_marginTop="6dp" android:text="Your recently watched titles will appear here" android:textColor="@color/z_text_secondary" android:textSize="13sp" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="20dp" android:layout_marginTop="24dp" android:text="Trending now" android:textColor="@color/z_text_primary" android:textSize="20sp" android:textStyle="bold" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="20dp" android:layout_marginTop="6dp" android:text="Connect a catalogue source to load trending titles" android:textColor="@color/z_text_secondary" android:textSize="13sp" />
-    </LinearLayout>
-</ScrollView>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical"
+                android:paddingStart="28dp" android:paddingEnd="28dp" android:layout_marginTop="54dp">
+                <TextView android:id="@+id/recentHeading" android:layout_width="0dp"
+                    android:layout_height="wrap_content" android:layout_weight="1"
+                    android:text="Recently released" android:textColor="@color/z_text_primary"
+                    android:textSize="20sp" android:textStyle="bold"/>
+                <TextView android:id="@+id/recentSeeAll" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:text="See All"
+                    android:textColor="@color/z_accent" android:textSize="14sp"/>
+            </LinearLayout>
+            <HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="22dp" android:scrollbars="none" android:clipToPadding="false">
+                <LinearLayout android:id="@+id/recentPosters" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:orientation="horizontal"
+                    android:paddingStart="28dp" android:paddingEnd="18dp"/>
+            </HorizontalScrollView>
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginStart="28dp" android:layout_marginTop="34dp"
+                android:text="Popular this week" android:textColor="@color/z_text_primary"
+                android:textSize="20sp" android:textStyle="bold"/>
+            <HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="18dp" android:scrollbars="none">
+                <LinearLayout android:id="@+id/popularPosters" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:orientation="horizontal"
+                    android:paddingStart="28dp" android:paddingEnd="18dp"/>
+            </HorizontalScrollView>
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>
