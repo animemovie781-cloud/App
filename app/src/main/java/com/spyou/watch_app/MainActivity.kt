@@ -1,6 +1,9 @@
 package com.spyou.watch_app
 
 import android.os.Bundle
+import android.graphics.Color
+import android.view.ViewGroup
+import com.github.dimezis.blurview.BlurView
 import android.view.View
 import android.content.res.ColorStateList
 import android.widget.ImageView
@@ -34,6 +37,11 @@ class MainActivity : AppCompatActivity() {
         }
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        // Native frosted-glass equivalent of liquidNavGlassSettings() in Dart.
+        binding.bottomDock.setupWith(binding.root as ViewGroup)
+            .setFrameClearDrawable(binding.root.background)
+            .setBlurRadius(18f)
+            .setOverlayColor(Color.argb(42, 24, 24, 32))
         binding.navHome.setOnClickListener { showTab(Tab.HOME) }
         binding.navSearch.setOnClickListener { showTab(Tab.LIBRARY) }
         binding.navLibrary.setOnClickListener { showTab(Tab.SEARCH) }
@@ -79,7 +87,8 @@ class MainActivity : AppCompatActivity() {
             icon.imageTintList = ColorStateList.valueOf(tint)
             label.setTextColor(getColor(if (selected) R.color.z_text_primary else R.color.z_text_secondary))
             container.alpha = if (selected) 1f else 0.86f
-            if (tab == Tab.HOME) icon.setImageResource(if (selected) R.drawable.ic_dock_home_filled else R.drawable.ic_dock_home)
+            if (tab == Tab.HOME) icon.setImageResource(R.drawable.dock_house)
+            if (tab == Tab.LIBRARY) icon.setImageResource(R.drawable.dock_bookmark)
         }
     }
 
