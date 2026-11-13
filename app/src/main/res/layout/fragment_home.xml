@@ -19,9 +19,9 @@
                     <ImageView android:layout_width="36dp" android:layout_height="36dp"
                         android:src="@drawable/onboarding_logo_mark" android:contentDescription="Zangetsu"/>
                     <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
-                    <TextView android:id="@+id/actionDownloads" style="@style/HomeHeaderAction" android:text="↓"/>
-                    <TextView android:id="@+id/actionNotifications" style="@style/HomeHeaderAction" android:text="♧"/>
-                    <TextView android:id="@+id/actionSearch" style="@style/HomeHeaderAction" android:text="⌕"/>
+                    <ImageView android:id="@+id/actionDownloads" style="@style/HomeHeaderAction" android:src="@drawable/ic_home_download" android:contentDescription="Downloads"/>
+                    <ImageView android:id="@+id/actionNotifications" style="@style/HomeHeaderAction" android:src="@drawable/ic_home_bell" android:contentDescription="Notifications"/>
+                    <ImageView android:id="@+id/actionSearch" style="@style/HomeHeaderAction" android:src="@drawable/ic_home_search" android:contentDescription="Search"/>
                 </LinearLayout>
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="vertical" android:gravity="center_horizontal"
@@ -50,11 +50,11 @@
                 android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp">
                 <LinearLayout android:id="@+id/scheduleCard" style="@style/HomeShortcutCard"
                     android:layout_width="0dp" android:layout_weight="1" android:layout_marginEnd="10dp">
-                    <TextView style="@style/HomeShortcutText" android:text="▣   Schedule &amp; lists"/>
+                    <TextView style="@style/HomeShortcutText" android:drawableStart="@drawable/ic_home_calendar" android:drawablePadding="9dp" android:text="Schedule &amp; lists"/>
                 </LinearLayout>
                 <LinearLayout android:id="@+id/genresCard" style="@style/HomeShortcutCard"
                     android:layout_width="0dp" android:layout_weight="1" android:layout_marginStart="10dp">
-                    <TextView style="@style/HomeShortcutText" android:text="◇   Genres"/>
+                    <TextView style="@style/HomeShortcutText" android:drawableStart="@drawable/ic_home_tag" android:drawablePadding="9dp" android:text="Genres"/>
                 </LinearLayout>
             </LinearLayout>
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
