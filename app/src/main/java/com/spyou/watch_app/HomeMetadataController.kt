@@ -136,6 +136,7 @@ class HomeMetadataController(
         renderPosters(binding.recentPosters, first.second)
         val second = rows.getOrNull(1)
         renderAdditionalSections(rows.drop(1))
+        if (isVideo) loadStreamingServices()
         first.second.firstOrNull()?.let { binding.scheduleArt.load(it.cover) { allowHardware(false); crossfade(true) } }
         (second?.second?.firstOrNull() ?: first.second.getOrNull(1))?.let { binding.genresArt.load(it.cover) { allowHardware(false); crossfade(true) } }
     }
@@ -165,6 +166,103 @@ class HomeMetadataController(
             renderPosters(posters, items)
             host.addView(scroller, LinearLayout.LayoutParams(-1, -2))
         }
+    }
+
+    /**
+     * Native port of Dart StreamingProvidersService + StreamingServicesRow.
+     * Merge movie and TV watch providers for the user's configured region,
+     * deduplicate by provider_id, pin the same major services first, and
+     * render TMDB's original provider logos as compact horizontal cards.
+     */
+    private fun loadStreamingServices() {
+        owner.lifecycleScope.launch {
+            val providers = withContext(Dispatchers.IO) {
+                try {
+                    val region = binding.root.context.getSharedPreferences("zangetsu_settings", android.content.Context.MODE_PRIVATE)
+                        .getString("streaming_region", "IN") ?: "IN"
+                    val endpoints = listOf("/watch/providers/tv?watch_region=$region", "/watch/providers/movie?watch_region=$region")
+                    val byId = linkedMapOf<Int, JSONObject>()
+                    endpoints.forEach { endpoint ->
+                        val results = tmdbRequest(endpoint).optJSONArray("results") ?: return@forEach
+                        for (i in 0 until results.length()) {
+                            val item = results.optJSONObject(i) ?: continue
+                            val id = item.optInt("provider_id", -1)
+                            val name = item.optString("provider_name").trim()
+                            if (id <= 0 || name.isBlank() || !isSubscribableProvider(id, name)) continue
+                            byId.putIfAbsent(id, item)
+                        }
+                    }
+                    val popularIds = listOf(8, 9, 119, 337, 350, 283, 1899, 15, 531, 386, 2336, 232)
+                    byId.values.sortedWith(compareBy<JSONObject> {
+                        val index = popularIds.indexOf(it.optInt("provider_id"))
+                        if (index < 0) popularIds.size else index
+                    }.thenBy { it.optInt("display_priority", 9999) })
+                } catch (_: Exception) { emptyList() }
+            }
+            if (providers.isNotEmpty()) renderStreamingServices(providers)
+        }
+    }
+
+    private fun isSubscribableProvider(id: Int, name: String): Boolean {
+        val excludedIds = setOf(2, 3, 10, 68, 192, 175, 2285)
+        val n = name.lowercase().trim()
+        return id !in excludedIds && !n.endsWith("channel") && !n.endsWith("store") &&
+            !n.endsWith("kids") && !n.contains("with ads")
+    }
+
+    private fun renderStreamingServices(providers: List<JSONObject>) {
+        val host = binding.additionalSections
+        val title = TextView(binding.root.context).apply {
+            text = "Streaming services"
+            setTextColor(Color.WHITE)
+            textSize = 17f
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            setPadding(dp(16), dp(26), dp(16), dp(14))
+        }
+        // Insert before the metadata catalogue rails, matching the Dart home
+        // row placement without shifting the hero or the Recently released row.
+        host.addView(title, 0, LinearLayout.LayoutParams(-1, -2))
+        val scroller = android.widget.HorizontalScrollView(binding.root.context).apply {
+            isHorizontalScrollBarEnabled = false
+            clipToPadding = false
+            setPadding(dp(16), 0, dp(16), 0)
+        }
+        val rail = LinearLayout(binding.root.context).apply { orientation = LinearLayout.HORIZONTAL }
+        scroller.addView(rail, ViewGroup.LayoutParams(-2, -2))
+        providers.take(12).forEach { provider ->
+            val name = provider.optString("provider_name")
+            val logoPath = provider.optString("logo_path").takeIf { it.isNotBlank() && it != "null" }
+            val tile = FrameLayout(binding.root.context).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(128), dp(70)).apply { marginEnd = dp(12) }
+                background = rounded(18, 0xFF20212A.toInt())
+                clipToOutline = true
+                contentDescription = name
+            }
+            if (logoPath != null) {
+                val logo = ImageView(binding.root.context).apply {
+                    layoutParams = FrameLayout.LayoutParams(-1, -1)
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    setPadding(dp(12), dp(10), dp(12), dp(10))
+                    load("https://image.tmdb.org/t/p/original$logoPath") { allowHardware(false); crossfade(true) }
+                }
+                tile.addView(logo)
+            } else {
+                val label = TextView(binding.root.context).apply {
+                    text = name
+                    setTextColor(Color.WHITE)
+                    textSize = 11f
+                    typeface = Typeface.DEFAULT_BOLD
+                    gravity = android.view.Gravity.CENTER
+                    setPadding(dp(8), dp(6), dp(8), dp(6))
+                }
+                tile.addView(label, FrameLayout.LayoutParams(-1, -1))
+            }
+            tile.setOnClickListener {
+                Toast.makeText(binding.root.context, "$name catalogue", Toast.LENGTH_SHORT).show()
+            }
+            rail.addView(tile)
+        }
+        host.addView(scroller, 1, LinearLayout.LayoutParams(-1, -2))
     }
 
     private fun updateHeroMeta(item: Media?) {
