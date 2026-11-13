@@ -3,7 +3,6 @@ package com.spyou.watch_app
 import android.os.Bundle
 import android.graphics.Color
 import android.view.ViewGroup
-import com.github.dimezis.blurview.BlurView
 import android.view.View
 import android.content.res.ColorStateList
 import android.widget.ImageView
