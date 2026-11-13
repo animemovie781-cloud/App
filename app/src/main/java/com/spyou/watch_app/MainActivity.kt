@@ -33,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         binding.navHome.setOnClickListener { showTab(Tab.HOME) }
         binding.navSearch.setOnClickListener { showTab(Tab.SEARCH) }
         binding.navLibrary.setOnClickListener { showTab(Tab.LIBRARY) }
-        binding.navSettings.setOnClickListener { showTab(Tab.SETTINGS) }
+        binding.navSettings.setOnClickListener { startActivity(android.content.Intent(this, ProfilePickerActivity::class.java)) }
         if (savedInstanceState != null) selectedTab = runCatching {
             Tab.valueOf(savedInstanceState.getString("selected_tab", "HOME")!!)
         }.getOrDefault(Tab.HOME)
@@ -46,12 +46,12 @@ class MainActivity : AppCompatActivity() {
         val page: View = if (tab == Tab.HOME) FragmentHomeBinding.inflate(layoutInflater).root else {
             FragmentSimpleBinding.inflate(layoutInflater).apply {
                 pageTitle.text = when (tab) {
-                    Tab.SEARCH -> "Search"; Tab.LIBRARY -> "My List"; Tab.SETTINGS -> "Settings"; else -> "Home"
+                    Tab.SEARCH -> "Sources"; Tab.LIBRARY -> "My List"; Tab.SETTINGS -> "Profile"; else -> "Home"
                 }
                 pageDescription.text = when (tab) {
-                    Tab.SEARCH -> "Search catalogues and providers"
+                    Tab.SEARCH -> "Browse installed streaming, manga and novel sources"
                     Tab.LIBRARY -> "Your saved anime, movies, manga and novels"
-                    Tab.SETTINGS -> "Personalize your Zangetsu experience"
+                    Tab.SETTINGS -> "Choose and manage your viewing profile"
                     else -> ""
                 }
             }.root
