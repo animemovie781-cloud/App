@@ -18,6 +18,7 @@ import com.spyou.watch_app.databinding.FragmentSimpleBinding
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var selectedTab = Tab.HOME
+    private var contentMode = "Anime"
     private enum class Tab { HOME, SEARCH, LIBRARY, SETTINGS }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,6 +47,7 @@ class MainActivity : AppCompatActivity() {
         binding.navLibrary.setOnClickListener { showTab(Tab.SEARCH) }
         binding.navSettings.setOnClickListener { startActivity(android.content.Intent(this, ProfilePickerActivity::class.java)) }
         binding.modeButton.setOnClickListener { showModeMenu() }
+        if (savedInstanceState != null) contentMode = savedInstanceState.getString("content_mode", "Anime") ?: "Anime"
         if (savedInstanceState != null) selectedTab = runCatching {
             Tab.valueOf(savedInstanceState.getString("selected_tab", "HOME")!!)
         }.getOrDefault(Tab.HOME)
@@ -55,7 +57,11 @@ class MainActivity : AppCompatActivity() {
     private fun showTab(tab: Tab) {
         selectedTab = tab
         binding.contentHost.removeAllViews()
-        val page: View = if (tab == Tab.HOME) FragmentHomeBinding.inflate(layoutInflater).root else {
+        val page: View = if (tab == Tab.HOME) {
+            val home = FragmentHomeBinding.inflate(layoutInflater)
+            HomeMetadataController(this, home, contentMode).load()
+            home.root
+        } else {
             FragmentSimpleBinding.inflate(layoutInflater).apply {
                 pageTitle.text = when (tab) {
                     Tab.SEARCH -> "Sources"; Tab.LIBRARY -> "My List"; Tab.SETTINGS -> "Profile"; else -> "Home"
@@ -95,7 +101,8 @@ class MainActivity : AppCompatActivity() {
         val menu = PopupMenu(this, binding.modeButton)
         listOf("Anime", "Movie / TV", "Manga", "Novel").forEach { menu.menu.add(it) }
         menu.setOnMenuItemClickListener { item ->
-            android.widget.Toast.makeText(this, "${item.title} mode selected", android.widget.Toast.LENGTH_SHORT).show()
+            contentMode = item.title.toString()
+            showTab(Tab.HOME)
             true
         }
         menu.show()
@@ -103,6 +110,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString("selected_tab", selectedTab.name)
+        outState.putString("content_mode", contentMode)
         super.onSaveInstanceState(outState)
     }
 }
