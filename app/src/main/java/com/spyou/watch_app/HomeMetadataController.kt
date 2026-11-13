@@ -67,10 +67,10 @@ class HomeMetadataController(
                 val featured = first.second.take(6)
                 binding.heroPager.adapter = HeroAdapter(featured)
                 binding.heroPager.offscreenPageLimit = 1
-                binding.heroTitle.text = featured.firstOrNull()?.title ?: first.title
-                binding.heroMeta.text = listOf(mode.uppercase(), featured.firstOrNull()?.year.orEmpty(), featured.firstOrNull()?.score?.takeIf { it.isNotBlank() }?.let { "★ $it" }).filter { it.isNotBlank() }.joinToString("  ·  ")
+                binding.heroTitle.text = featured.firstOrNull()?.title ?: first.first
+                binding.heroMeta.text = listOfNotNull(mode.uppercase(), featured.firstOrNull()?.year?.takeIf { it.isNotBlank() }, featured.firstOrNull()?.score?.takeIf { it.isNotBlank() }?.let { "★ $it" }).joinToString("  ·  ")
                 binding.heroDetails.setOnClickListener {
-                    Toast.makeText(binding.root.context, first.second.firstOrNull()?.title ?: first.title, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(binding.root.context, first.second.firstOrNull()?.title ?: first.first, Toast.LENGTH_SHORT).show()
                 }
                 renderDots(featured.size)
                 binding.heroPager.registerOnPageChangeCallback(object : androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback() {
@@ -81,7 +81,7 @@ class HomeMetadataController(
                         renderDots(featured.size, position)
                     }
                 })
-                binding.recentHeading.text = first.title
+                binding.recentHeading.text = first.first
                 renderPosters(binding.recentPosters, first.second)
                 val second = rows.getOrNull(1)
                 if (second != null) {
