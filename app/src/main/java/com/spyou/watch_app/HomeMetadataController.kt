@@ -43,7 +43,8 @@ class HomeMetadataController(
         val description: String,
         val year: String,
         val genres: String,
-        val mediaType: String
+        val mediaType: String,
+        val episodes: Int = 0
     )
 
     private val isVideo = mode == "Movie / TV"
@@ -101,8 +102,11 @@ class HomeMetadataController(
         val featured = first.second.take(6)
         binding.heroPager.adapter = HeroAdapter(featured)
         binding.heroPager.offscreenPageLimit = 1
+        binding.heroLogo.visibility = View.GONE
+        binding.heroTitle.visibility = View.VISIBLE
         binding.heroTitle.text = featured.firstOrNull()?.title ?: first.first
-        binding.heroMeta.text = listOfNotNull(mode.uppercase(), featured.firstOrNull()?.year?.takeIf { it.isNotBlank() }, featured.firstOrNull()?.score?.takeIf { it.isNotBlank() }?.let { "★ $it" }).joinToString("  ·  ")
+        updateHeroMeta(featured.firstOrNull())
+        loadHeroLogo(featured.firstOrNull())
         binding.heroDetails.setOnClickListener {
             Toast.makeText(binding.root.context, first.second.firstOrNull()?.title ?: first.first, Toast.LENGTH_SHORT).show()
         }
@@ -123,6 +127,51 @@ class HomeMetadataController(
         (second?.second?.firstOrNull() ?: first.second.getOrNull(1))?.let { binding.genresArt.load(it.cover) { allowHardware(false); crossfade(true) } }
     }
 
+    private fun updateHeroMeta(item: Media?) {
+        if (item == null) return
+        val meta = buildList {
+            item.genres.split("·").map { it.trim() }.filter { it.isNotBlank() }.take(2).forEach { add(it.uppercase()) }
+            if (item.episodes > 0) add(item.episodes.toString() + " EPISODES") else if (item.year.isNotBlank()) add(item.year)
+        }
+        binding.heroMeta.text = meta.joinToString("  ·  ")
+    }
+
+    private fun loadHeroLogo(item: Media?) {
+        if (item == null) return
+        owner.lifecycleScope.launch {
+            val logo = withContext(Dispatchers.IO) { resolveTitleLogo(item) }
+            if (binding.heroTitle.text?.toString() != item.title) return@launch
+            if (!logo.isNullOrBlank()) {
+                binding.heroLogo.load(logo) { allowHardware(false); crossfade(250) }
+                binding.heroLogo.visibility = View.VISIBLE
+                binding.heroTitle.visibility = View.GONE
+            }
+        }
+    }
+
+    /** TMDB title-logo lookup: multi-search, then localized images. */
+    private fun resolveTitleLogo(item: Media): String? = try {
+        val query = java.net.URLEncoder.encode(item.title, "UTF-8")
+        val search = tmdbRequest("/search/multi?query=" + query)
+        val results = search.optJSONArray("results") ?: return null
+        var id: String? = null
+        var kind: String? = null
+        for (i in 0 until results.length()) {
+            val result = results.optJSONObject(i) ?: continue
+            val mediaType = result.optString("media_type")
+            if (mediaType == "movie" || mediaType == "tv") { id = result.optString("id"); kind = mediaType; break }
+        }
+        if (id.isNullOrBlank() || kind.isNullOrBlank()) return null
+        val logos = tmdbRequest("/" + kind + "/" + id + "/images?include_image_language=en,null").optJSONArray("logos") ?: return null
+        var chosen: JSONObject? = null
+        for (i in 0 until logos.length()) {
+            val logo = logos.optJSONObject(i) ?: continue
+            if (logo.optString("iso_639_1") == "en") { chosen = logo; break }
+            if (chosen == null) chosen = logo
+        }
+        chosen?.optString("file_path")?.takeIf { it.isNotBlank() && it != "null" }?.let { "https://image.tmdb.org/t/p/w500" + it }
+    } catch (_: Exception) { null }
+
     private fun cachePrefs() = binding.root.context.getSharedPreferences("zangetsu_metadata_cache", android.content.Context.MODE_PRIVATE)
 
     private fun readCachedRows(): List<Pair<String, List<Media>>> {
@@ -139,7 +188,7 @@ class HomeMetadataController(
                     val title = m.optString("title").cleanValue()
                     val cover = m.optString("cover").cleanValue()
                     if (!title.isMeaningful() || cover.isBlank()) return@mapNotNull null
-                    Media(m.optString("id"), title, cover, m.optString("banner").takeIf { it.isMeaningful() }, m.optString("score").cleanValue(), m.optString("description").cleanValue(), m.optString("year").cleanValue(), m.optString("genres").cleanValue(), m.optString("mediaType").cleanValue())
+                    Media(m.optString("id"), title, cover, m.optString("banner").takeIf { it.isMeaningful() }, m.optString("score").cleanValue(), m.optString("description").cleanValue(), m.optString("year").cleanValue(), m.optString("genres").cleanValue(), m.optString("mediaType").cleanValue(), m.optInt("episodes"))
                 }
                 if (media.isEmpty()) null else row.optString("title") to media
             }
@@ -152,7 +201,7 @@ class HomeMetadataController(
             rows.forEach { (title, items) ->
                 val media = org.json.JSONArray()
                 items.forEach { m ->
-                    media.put(JSONObject().put("id", m.id).put("title", m.title).put("cover", m.cover).put("banner", m.banner).put("score", m.score).put("description", m.description).put("year", m.year).put("genres", m.genres).put("mediaType", m.mediaType))
+                    media.put(JSONObject().put("id", m.id).put("title", m.title).put("cover", m.cover).put("banner", m.banner).put("score", m.score).put("description", m.description).put("year", m.year).put("genres", m.genres).put("mediaType", m.mediaType).put("episodes", m.episodes))
                 }
                 array.put(JSONObject().put("title", title).put("items", media))
             }
@@ -292,7 +341,7 @@ class HomeMetadataController(
         val genreText = genres?.let { a -> (0 until a.length()).map { a.optString(it) }.joinToString(" · ") }.orEmpty()
         return Media(o.optString("id"), title, cover, o.optString("bannerImage").takeIf { it.isNotBlank() && it != "null" },
             o.optInt("averageScore").takeIf { it > 0 }?.let { "%.1f".format(it / 10.0) }.orEmpty(),
-            "", o.optInt("seasonYear").takeIf { it > 0 }?.toString().orEmpty(), genreText, contentKind)
+            "", o.optInt("seasonYear").takeIf { it > 0 }?.toString().orEmpty(), genreText, contentKind, o.optInt("episodes"))
     }
 
     private suspend fun loadTmdbRows(): List<Pair<String, List<Media>>> = coroutineScope {
