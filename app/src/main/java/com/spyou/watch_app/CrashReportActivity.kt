@@ -1,4 +1,4 @@
-package com.spyou.watch_app
+package com.kanha.dev
 
 import android.content.ClipData
 import android.content.ClipboardManager
