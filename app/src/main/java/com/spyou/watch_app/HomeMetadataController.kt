@@ -124,7 +124,10 @@ class HomeMetadataController(
                 val items = row.optJSONArray("items") ?: return@mapNotNull null
                 val media = (0 until items.length()).mapNotNull { j ->
                     val m = items.optJSONObject(j) ?: return@mapNotNull null
-                    Media(m.optString("id"), m.optString("title"), m.optString("cover"), m.optString("banner").takeIf { it.isNotBlank() && it != "null" }, m.optString("score"), m.optString("description"), m.optString("year"), m.optString("genres"), m.optString("mediaType"))
+                    val title = m.optString("title").cleanValue()
+                    val cover = m.optString("cover").cleanValue()
+                    if (!title.isMeaningful() || cover.isBlank()) return@mapNotNull null
+                    Media(m.optString("id"), title, cover, m.optString("banner").takeIf { it.isMeaningful() }, m.optString("score").cleanValue(), m.optString("description").cleanValue(), m.optString("year").cleanValue(), m.optString("genres").cleanValue(), m.optString("mediaType").cleanValue())
                 }
                 if (media.isEmpty()) null else row.optString("title") to media
             }
@@ -262,10 +265,15 @@ class HomeMetadataController(
     private fun parseAniList(o: JSONObject?): Media? {
         if (o == null) return null
         val titles = o.optJSONObject("title")
-        val title = titles?.optString("english").orEmpty().takeIf { it.isNotBlank() }
-            ?: titles?.optString("romaji").orEmpty().takeIf { it.isNotBlank() }
-            ?: titles?.optString("native").orEmpty()
-        val cover = o.optJSONObject("coverImage")?.optString("large").orEmpty()
+        // org.json serialises JSONObject.NULL as the literal text "null".
+        // AniList often has no English title, and accepting that literal was
+        // what produced the visible "null" labels in the native home screen.
+        val title = listOf(
+            titles?.optString("english"),
+            titles?.optString("romaji"),
+            titles?.optString("native")
+        ).firstOrNull { it.isMeaningful() }.orEmpty()
+        val cover = o.optJSONObject("coverImage")?.optString("large").orEmpty().cleanValue()
         if (title.isBlank() || cover.isBlank()) return null
         val genres = o.optJSONArray("genres")
         val genreText = genres?.let { a -> (0 until a.length()).map { a.optString(it) }.joinToString(" · ") }.orEmpty()
@@ -294,8 +302,8 @@ class HomeMetadataController(
             val type = o.optString("media_type").ifBlank {
                 if (path.startsWith("/tv/")) "tv" else if (path.startsWith("/movie/")) "movie" else "movie"
             }
-            val title = o.optString("title").ifBlank { o.optString("name") }
-            val poster = o.optString("poster_path")
+            val title = o.optString("title").cleanValue().ifBlank { o.optString("name").cleanValue() }
+            val poster = o.optString("poster_path").cleanValue()
             if (title.isBlank() || poster.isBlank()) return@mapNotNull null
             val backdrop = o.optString("backdrop_path").takeIf { it.isNotBlank() && it != "null" }?.let { "https://image.tmdb.org/t/p/w1280$it" }
             val genres = o.optJSONArray("genre_ids")
@@ -353,6 +361,9 @@ class HomeMetadataController(
         setColor(color)
     }
     private fun dp(value: Int): Int = (value * binding.root.resources.displayMetrics.density).toInt()
+
+    private fun String?.isMeaningful(): Boolean = !this.isNullOrBlank() && !equals("null", ignoreCase = true)
+    private fun String.cleanValue(): String = if (equals("null", ignoreCase = true)) "" else this
 
     companion object {
         // Exact TMDB v3 key embedded by the original Dart Tmdb.apiKey.

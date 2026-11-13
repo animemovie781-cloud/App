@@ -16,8 +16,8 @@
                     android:orientation="horizontal" android:gravity="center_vertical"
                     android:paddingStart="20dp" android:paddingEnd="20dp"
                     android:layout_gravity="top" android:layout_marginTop="32dp">
-                    <ImageView android:layout_width="36dp" android:layout_height="36dp"
-                        android:src="@drawable/onboarding_logo_mark" android:contentDescription="Zangetsu"/>
+                    <ImageView android:layout_width="40dp" android:layout_height="40dp"
+                        android:src="@drawable/zangetsu_logo_mark" android:contentDescription="Zangetsu"/>
                     <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
                     <ImageView android:id="@+id/actionDownloads" style="@style/HomeHeaderAction" android:src="@drawable/ic_home_download" android:contentDescription="Downloads"/>
                     <ImageView android:id="@+id/actionNotifications" style="@style/HomeHeaderAction" android:src="@drawable/ic_home_bell" android:contentDescription="Notifications"/>

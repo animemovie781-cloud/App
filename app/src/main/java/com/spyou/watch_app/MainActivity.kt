@@ -62,8 +62,13 @@ class MainActivity : AppCompatActivity() {
             val density = resources.displayMetrics.density
             val screenDp = resources.displayMetrics.heightPixels / density
             home.heroSection.layoutParams = home.heroSection.layoutParams.apply {
-                height = (screenDp * 0.62f).toInt().coerceIn(380, 560).let { (it * density).toInt() }
+                // The original phone hero is deliberately cinematic: it occupies
+                // roughly two thirds of the viewport before the compact shortcut
+                // cards.  Keeping this in pixels avoids a short banner on dense
+                // screens, which was pushing the title/CTA into a cramped stack.
+                height = (screenDp * 0.68f).toInt().coerceIn(430, 620).let { (it * density).toInt() }
             }
+            home.heroSection.requestLayout()
             HomeMetadataController(this, home, contentMode).load()
             home.root
         } else {
