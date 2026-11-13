@@ -249,6 +249,7 @@ class HomeMetadataController(
         }
         // Insert before the metadata catalogue rails, matching the Dart home
         // row placement without shifting the hero or the Recently released row.
+        title.setOnClickListener { openStreamingServicesDirectory() }
         host.addView(title, LinearLayout.LayoutParams(-1, -2))
         val scroller = android.widget.HorizontalScrollView(binding.root.context).apply {
             isHorizontalScrollBarEnabled = false
@@ -286,11 +287,27 @@ class HomeMetadataController(
                 tile.addView(label, FrameLayout.LayoutParams(-1, -1))
             }
             tile.setOnClickListener {
-                Toast.makeText(binding.root.context, "$name catalogue", Toast.LENGTH_SHORT).show()
+                binding.root.context.startActivity(android.content.Intent(binding.root.context, StreamingServicesActivity::class.java)
+                    .putExtra(StreamingServicesActivity.EXTRA_PROVIDER_ID, provider.optInt("provider_id"))
+                    .putExtra(StreamingServicesActivity.EXTRA_PROVIDER_NAME, name))
             }
             rail.addView(tile)
         }
         host.addView(scroller, LinearLayout.LayoutParams(-1, -2))
+        val seeAll = TextView(binding.root.context).apply {
+            text = "See All"
+            setTextColor(0xFFFF4D57.toInt())
+            textSize = 13f
+            setPadding(dp(16), dp(10), dp(16), dp(4))
+            gravity = android.view.Gravity.END
+            setOnClickListener { openStreamingServicesDirectory() }
+        }
+        // Keep the action in the same service section, not in a second rail.
+        host.addView(seeAll, LinearLayout.LayoutParams(-1, -2))
+    }
+
+    private fun openStreamingServicesDirectory() {
+        binding.root.context.startActivity(android.content.Intent(binding.root.context, StreamingServicesActivity::class.java))
     }
 
     private fun updateHeroMeta(item: Media?) {
