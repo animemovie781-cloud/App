@@ -122,9 +122,36 @@ class HomeMetadataController(
         binding.recentHeading.text = first.first
         renderPosters(binding.recentPosters, first.second)
         val second = rows.getOrNull(1)
-        if (second != null) renderPosters(binding.popularPosters, second.second)
+        renderAdditionalSections(rows.drop(1))
         first.second.firstOrNull()?.let { binding.scheduleArt.load(it.cover) { allowHardware(false); crossfade(true) } }
         (second?.second?.firstOrNull() ?: first.second.getOrNull(1))?.let { binding.genresArt.load(it.cover) { allowHardware(false); crossfade(true) } }
+    }
+
+    private fun renderAdditionalSections(rows: List<Pair<String, List<Media>>>) {
+        val host = binding.additionalSections
+        host.removeAllViews()
+        rows.forEach { (heading, items) ->
+            if (items.isEmpty()) return@forEach
+            val title = TextView(binding.root.context).apply {
+                text = heading
+                setTextColor(Color.WHITE)
+                textSize = 17f
+                typeface = Typeface.create("sans-serif", Typeface.BOLD)
+                setPadding(dp(16), dp(24), dp(16), 0)
+            }
+            host.addView(title, LinearLayout.LayoutParams(-1, -2))
+            val scroller = android.widget.HorizontalScrollView(binding.root.context).apply {
+                isHorizontalScrollBarEnabled = false
+                clipToPadding = false
+                setPadding(dp(16), dp(14), dp(16), 0)
+            }
+            val posters = LinearLayout(binding.root.context).apply {
+                orientation = LinearLayout.HORIZONTAL
+            }
+            scroller.addView(posters, android.widget.HorizontalScrollView.LayoutParams(-2, -2))
+            renderPosters(posters, items)
+            host.addView(scroller, LinearLayout.LayoutParams(-1, -2))
+        }
     }
 
     private fun updateHeroMeta(item: Media?) {
@@ -304,12 +331,32 @@ class HomeMetadataController(
             else -> ""
         }
         val adult = ",isAdult:false"
-        val rows = if (contentKind == "anime") listOf(
-            "Recently released" to "sort:START_DATE_DESC,status_in:[RELEASING,FINISHED],popularity_greater:2000",
-            "Trending" to "sort:TRENDING_DESC",
-            "Popular this season" to "sort:POPULARITY_DESC",
-            "Top rated" to "sort:SCORE_DESC"
-        ) else listOf(
+        val rows = if (contentKind == "anime") {
+            val now = java.time.LocalDate.now()
+            val season = when (now.monthValue) {
+                in 1..3 -> "WINTER"
+                in 4..6 -> "SPRING"
+                in 7..9 -> "SUMMER"
+                else -> "FALL"
+            }
+            val (nextSeason, nextYear) = when (season) {
+                "WINTER" -> "SPRING" to now.year
+                "SPRING" -> "SUMMER" to now.year
+                "SUMMER" -> "FALL" to now.year
+                else -> "WINTER" to now.year + 1
+            }
+            val today = now.year * 10000 + now.monthValue * 100 + now.dayOfMonth
+            listOf(
+                "Recently released" to "sort:START_DATE_DESC,status_in:[RELEASING,FINISHED],popularity_greater:2000,startDate_lesser:$today",
+                "Trending" to "sort:TRENDING_DESC",
+                "Popular this season" to "sort:POPULARITY_DESC,season:$season,seasonYear:${now.year}",
+                "Upcoming next season" to "sort:POPULARITY_DESC,season:$nextSeason,seasonYear:$nextYear,status:NOT_YET_RELEASED",
+                "All-time popular" to "sort:POPULARITY_DESC",
+                "Top rated" to "sort:SCORE_DESC",
+                "Action" to "genre_in:[\\"Action\\"],sort:POPULARITY_DESC",
+                "Romance" to "genre_in:[\\"Romance\\"],sort:POPULARITY_DESC"
+            )
+        } else listOf(
             "Recently released" to "sort:START_DATE_DESC,status_in:[RELEASING,FINISHED],popularity_greater:${if (contentKind == "novel") 50 else 1000}",
             "Trending" to "sort:TRENDING_DESC",
             "Popular" to "sort:POPULARITY_DESC",

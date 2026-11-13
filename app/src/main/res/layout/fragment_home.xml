@@ -91,16 +91,9 @@
                     android:layout_height="wrap_content" android:orientation="horizontal"
                     android:paddingStart="16dp" android:paddingEnd="16dp"/>
             </HorizontalScrollView>
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginStart="16dp" android:layout_marginTop="28dp"
-                android:text="Popular this week" android:textColor="@color/z_text_primary"
-                android:textSize="20sp" android:textStyle="bold"/>
-            <HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="18dp" android:scrollbars="none">
-                <LinearLayout android:id="@+id/popularPosters" android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:orientation="horizontal"
-                    android:paddingStart="28dp" android:paddingEnd="18dp"/>
-            </HorizontalScrollView>
+            <LinearLayout android:id="@+id/additionalSections"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:paddingBottom="24dp"/>
         </LinearLayout>
     </ScrollView>
 </FrameLayout>
