@@ -18,6 +18,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
+import androidx.core.widget.addTextChangedListener
 
 /** Native search entry screen following lib/features/home/search_screen.dart. */
 class SearchActivity : AppCompatActivity() {
