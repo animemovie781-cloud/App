@@ -84,6 +84,18 @@ class HomeMetadataController(
     }
 
     private fun renderRows(rows: List<Pair<String, List<Media>>>) {
+        // The original source PNGs are 96px assets; Flutter displays them at 20dp.
+        listOf(binding.scheduleCard, binding.genresCard).forEach { card ->
+            val group = card as ViewGroup
+            val label = (0 until group.childCount).mapNotNull { group.getChildAt(it) as? TextView }.firstOrNull()
+            label?.let { text ->
+                val drawables = text.compoundDrawablesRelative
+                val icon = drawables[0]
+                icon?.setBounds(0, 0, dp(20), dp(20))
+                text.setCompoundDrawablesRelative(icon, drawables[1], drawables[2], drawables[3])
+                text.compoundDrawablePadding = dp(8)
+            }
+        }
         if (rows.isEmpty()) return
         val first = rows.first()
         val featured = first.second.take(6)

@@ -74,7 +74,7 @@ class MainActivity : AppCompatActivity() {
                 // roughly two thirds of the viewport before the compact shortcut
                 // cards.  Keeping this in pixels avoids a short banner on dense
                 // screens, which was pushing the title/CTA into a cramped stack.
-                height = (screenDp * 0.68f).toInt().coerceIn(430, 620).let { (it * density).toInt() }
+                height = (screenDp * 0.62f).toInt().coerceIn(380, 560).let { (it * density).toInt() }
             }
             home.heroSection.requestLayout()
             HomeMetadataController(this, home, contentMode).load()
