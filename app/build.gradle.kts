@@ -4,10 +4,10 @@ plugins {
 }
 
 android {
-    namespace = "com.spyou.watch_app"
+    namespace = "com.kanha.dev"
     compileSdk = 35
     defaultConfig {
-        applicationId = "com.spyou.watch_app"
+        applicationId = "com.kanha.dev"
         minSdk = 23
         targetSdk = 35
         versionCode = 23637
