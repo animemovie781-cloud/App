@@ -203,9 +203,10 @@ class SearchActivity : AppCompatActivity() {
                 setOnClickListener {
                     if (key == "genres") showGenrePicker(options[key] ?: emptyList(), genres) { picked ->
                         genres.clear(); genres.addAll(picked); selected["genres"] = if (genres.isEmpty()) "Any" else genres.joinToString(", ")
+                        prefs.edit().putString("genres", selected["genres"]).apply()
                         sheet.dismiss(); showSearchOptions()
                     } else showValuePicker(label, options[key] ?: emptyList(), selected[key] ?: defaults[key]!!) { picked ->
-                        selected[key] = picked; sheet.dismiss(); showSearchOptions()
+                        selected[key] = picked; prefs.edit().putString(key, picked).apply(); sheet.dismiss(); showSearchOptions()
                     }
                 }
             }
