@@ -99,9 +99,22 @@ class HomeMetadataController(
         }
         if (rows.isEmpty()) return
         val first = rows.first()
-        val featured = first.second.take(6)
+        val featured = (rows.firstOrNull { it.first.startsWith("Trending", ignoreCase = true) }?.second ?: first.second).take(6)
         binding.heroPager.adapter = HeroAdapter(featured)
         binding.heroPager.offscreenPageLimit = 1
+        // Match the Dart edge banner: 650ms cross-fade and 5-second rotation.
+        binding.heroPager.setPageTransformer { page, position ->
+            page.alpha = (1f - kotlin.math.abs(position)).coerceIn(0f, 1f)
+        }
+        owner.lifecycleScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(5_000)
+                val count = binding.heroPager.adapter?.itemCount ?: 0
+                if (count > 1 && binding.heroPager.isShown) {
+                    binding.heroPager.setCurrentItem((binding.heroPager.currentItem + 1) % count, true)
+                }
+            }
+        }
         binding.heroLogo.visibility = View.GONE
         binding.heroTitle.visibility = View.VISIBLE
         binding.heroTitle.text = featured.firstOrNull()?.title ?: first.first
@@ -363,7 +376,7 @@ class HomeMetadataController(
             "Top rated" to "sort:SCORE_DESC"
         )
         val aliases = rows.mapIndexed { i, row ->
-            "r$i: Page(perPage:20){ media(type:$type$adult$format,${row.second}){ id title{romaji english native} coverImage{large} bannerImage averageScore genres seasonYear chapters episodes status } }"
+            "r$i: Page(perPage:30){ media(type:$type$adult$format,${row.second}){ id title{romaji english native} coverImage{large} bannerImage averageScore genres seasonYear chapters episodes status } }"
         }.joinToString(" ")
         val data = aniListRequest("query{ $aliases }")
         return rows.mapIndexedNotNull { i, row ->

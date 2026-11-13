@@ -7,7 +7,7 @@
         android:fillViewport="false" android:scrollbars="none">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="vertical" android:paddingBottom="126dp">
-            <FrameLayout android:id="@+id/heroSection" android:layout_width="match_parent" android:layout_height="560dp">
+            <FrameLayout android:id="@+id/heroSection" android:layout_width="match_parent" android:layout_height="560dp" android:background="@android:color/transparent" android:clipChildren="false" android:clipToPadding="false">
                 <!-- Reference hero: edge-to-edge artwork, not an inset poster card. -->
                 <androidx.viewpager2.widget.ViewPager2 android:id="@+id/heroPager"
                     android:layout_width="match_parent" android:layout_height="match_parent"/>
