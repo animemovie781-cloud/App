@@ -4,7 +4,7 @@
         android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="12dp" android:paddingEnd="12dp"
         android:paddingTop="0dp" android:paddingBottom="12dp" android:clipChildren="false" android:clipToPadding="false"
         app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent">
-        <com.github.dimezis.blurview.BlurView android:id="@+id/bottomDock" android:layout_width="0dp" android:layout_height="60dp"
+        <eightbitlab.com.blurview.BlurView android:id="@+id/bottomDock" android:layout_width="0dp" android:layout_height="60dp"
             android:layout_weight="1"
             android:background="@drawable/bg_dock" android:elevation="16dp">
             <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center" android:paddingStart="5dp" android:paddingEnd="5dp">
@@ -25,7 +25,7 @@
                 <TextView android:id="@+id/navSettingsLabel" style="@style/DockTabLabel" android:text="Profile"/>
             </LinearLayout>
             </LinearLayout>
-        </com.github.dimezis.blurview.BlurView>
+        </eightbitlab.com.blurview.BlurView>
         <FrameLayout android:id="@+id/modeButton" android:layout_width="56dp" android:layout_height="56dp"
             android:layout_marginStart="8dp" android:background="@drawable/bg_mode_fab" android:elevation="18dp"
             android:clickable="true" android:focusable="true" android:foreground="?attr/selectableItemBackgroundBorderless">
