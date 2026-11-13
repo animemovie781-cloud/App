@@ -6,7 +6,7 @@
         android:layout_height="match_parent" android:clipToPadding="false"
         android:fillViewport="false" android:scrollbars="none">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:paddingBottom="100dp">
+            android:orientation="vertical" android:paddingBottom="126dp">
             <FrameLayout android:id="@+id/heroSection" android:layout_width="match_parent" android:layout_height="560dp">
                 <androidx.viewpager2.widget.ViewPager2 android:id="@+id/heroPager"
                     android:layout_width="match_parent" android:layout_height="match_parent"/>
@@ -29,8 +29,8 @@
                     android:paddingEnd="28dp" android:paddingBottom="24dp">
                     <TextView android:id="@+id/heroTitle" android:layout_width="match_parent"
                         android:layout_height="wrap_content" android:gravity="center"
-                        android:text="Connect a source to discover anime"
-                        android:textColor="@color/z_text_primary" android:textSize="25sp"
+                        android:text="Discover something new"
+                        android:textColor="@color/z_text_primary" android:textSize="26sp"
                         android:textStyle="bold" android:includeFontPadding="false"/>
                     <TextView android:id="@+id/heroMeta" android:layout_width="match_parent"
                         android:layout_height="wrap_content" android:layout_marginTop="14dp"
