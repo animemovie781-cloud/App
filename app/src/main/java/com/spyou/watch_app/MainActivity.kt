@@ -213,11 +213,12 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(12))
         }
+        // Use the exact Material icon PNGs supplied for the original mode menu.
         val options = listOf(
-            Triple("Anime", R.drawable.ic_onboarding_streaming, "Anime"),
-            Triple("Movie/TV", R.drawable.ic_dock_sources, "Movie / TV"),
-            Triple("Manga", R.drawable.ic_onboarding_manga, "Manga"),
-            Triple("Novel", R.drawable.ic_onboarding_novel, "Novel")
+            Triple("Anime", R.drawable.mode_anime, "Anime"),
+            Triple("Movie/TV", R.drawable.mode_movie_tv, "Movie / TV"),
+            Triple("Manga", R.drawable.mode_manga, "Manga"),
+            Triple("Novel", R.drawable.mode_novel, "Novel")
         )
         options.forEach { (label, iconRes, value) ->
             val row = LinearLayout(this).apply {
@@ -247,11 +248,12 @@ class MainActivity : AppCompatActivity() {
                 setPadding(dp(18), 0, 0, 0)
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
             }
-            val check = TextView(this).apply {
-                text = if (contentMode == value) "✓" else ""
-                setTextColor(Color.rgb(255, 77, 87))
-                textSize = 25f
-                typeface = Typeface.DEFAULT_BOLD
+            val check = ImageView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(24), dp(24))
+                setImageResource(R.drawable.mode_check_red)
+                visibility = if (contentMode == value) View.VISIBLE else View.INVISIBLE
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                contentDescription = if (contentMode == value) "Selected" else null
             }
             row.addView(icon); row.addView(title); row.addView(check)
             row.setOnClickListener {
