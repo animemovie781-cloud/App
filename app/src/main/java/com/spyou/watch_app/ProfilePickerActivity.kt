@@ -121,7 +121,7 @@ class ProfilePickerActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
             includeFontPadding = false
             maxLines = 1
-            setTypeface(Typeface.create("sans-serif", if (selected) Typeface.BOLD else Typeface.SEMI_BOLD))
+            setTypeface(Typeface.create("sans-serif", if (selected) Typeface.BOLD else Typeface.NORMAL))
             setTextColor(getColor(if (selected && !add) R.color.z_text_primary else R.color.z_text_secondary))
             setPadding(0, dp(7), 0, 0)
         }, LinearLayout.LayoutParams(-1, dp(28)))
