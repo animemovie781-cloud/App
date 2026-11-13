@@ -186,7 +186,7 @@ class HomeMetadataController(
                 }
             }
             val posterFrame = FrameLayout(binding.root.context).apply {
-                layoutParams = LinearLayout.LayoutParams(dp(116), dp(166))
+                layoutParams = LinearLayout.LayoutParams(dp(116), dp(174))
                 background = rounded(12, 0xFF20212A.toInt())
                 clipToOutline = true
             }
@@ -201,14 +201,14 @@ class HomeMetadataController(
                 val score = TextView(binding.root.context).apply {
                     text = "★ " + item.score
                     setTextColor(0xFFFFD54F.toInt())
-                    textSize = 10f
+                    textSize = 9f
                     typeface = Typeface.DEFAULT_BOLD
-                    setPadding(dp(6), dp(3), dp(6), dp(3))
-                    background = rounded(10, 0xCC101116.toInt())
+                    setPadding(dp(4), dp(2), dp(5), dp(2))
+                    background = rounded(4, 0x99000000.toInt())
                 }
                 val badgeLp = FrameLayout.LayoutParams(-2, -2, android.view.Gravity.TOP or android.view.Gravity.END).apply {
-                    topMargin = dp(7)
-                    marginEnd = dp(7)
+                    topMargin = dp(6)
+                    marginEnd = dp(6)
                 }
                 posterFrame.addView(score, badgeLp)
             }
@@ -217,9 +217,10 @@ class HomeMetadataController(
                 text = item.title
                 setTextColor(Color.WHITE)
                 textSize = 13f
-                typeface = Typeface.DEFAULT_BOLD
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                 maxLines = 2
-                setPadding(0, dp(7), 0, 0)
+                setLineSpacing(dp(0).toFloat(), 1.3f)
+                setPadding(0, dp(8), 0, 0)
             }
             card.addView(title)
             target.addView(card)
