@@ -1,4 +1,4 @@
-package com.spyou.watch_app
+package com.kanha.dev
 
 import android.os.Bundle
 import android.graphics.Color
@@ -10,9 +10,9 @@ import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
-import com.spyou.watch_app.databinding.ActivityMainBinding
-import com.spyou.watch_app.databinding.FragmentHomeBinding
-import com.spyou.watch_app.databinding.FragmentSimpleBinding
+import com.kanha.dev.databinding.ActivityMainBinding
+import com.kanha.dev.databinding.FragmentHomeBinding
+import com.kanha.dev.databinding.FragmentSimpleBinding
 
 /** Native Kotlin/XML host; feature screens are migrated from the original Dart app incrementally. */
 class MainActivity : AppCompatActivity() {
