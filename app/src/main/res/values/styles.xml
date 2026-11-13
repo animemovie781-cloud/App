@@ -1,10 +1,30 @@
 <resources>
-    <style name="DockItem">
-        <item name="android:layout_width">0dp</item><item name="android:layout_height">match_parent</item>
-        <item name="android:layout_weight">1</item><item name="android:gravity">center</item>
-        <item name="android:textAlignment">center</item><item name="android:textSize">11sp</item>
-        <item name="android:textColor">@color/z_text_secondary</item><item name="android:fontFamily">sans</item>
-        <item name="android:paddingTop">7dp</item><item name="android:paddingBottom">5dp</item>
+    <style name="DockTabItem">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:gravity">center</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:foreground">?attr/selectableItemBackground</item>
+        <item name="android:paddingTop">5dp</item>
+        <item name="android:paddingBottom">3dp</item>
+    </style>
+    <style name="DockTabIcon">
+        <item name="android:layout_width">25dp</item>
+        <item name="android:layout_height">25dp</item>
+        <item name="android:layout_gravity">center</item>
+        <item name="android:tint">@color/z_text_primary</item>
+    </style>
+    <style name="DockTabLabel">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">3dp</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:textColor">@color/z_text_secondary</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:includeFontPadding">false</item>
     </style>
 
     <style name="HomeHeaderAction">
