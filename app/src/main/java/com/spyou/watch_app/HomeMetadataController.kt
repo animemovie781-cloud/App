@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.ImageView
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -87,6 +88,8 @@ class HomeMetadataController(
                 if (second != null) {
                     renderPosters(binding.popularPosters, second.second)
                 }
+                first.second.firstOrNull()?.let { binding.scheduleArt.load(it.cover) { crossfade(true) } }
+                (second?.second?.firstOrNull() ?: first.second.getOrNull(1))?.let { binding.genresArt.load(it.cover) { crossfade(true) } }
             } catch (e: Exception) {
                 binding.heroTitle.text = "Metadata couldn't load"
                 binding.heroMeta.text = e.message?.take(90) ?: "PLEASE TRY AGAIN"
