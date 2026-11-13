@@ -2,10 +2,8 @@ package com.spyou.watch_app
 
 import android.graphics.Color
 import android.graphics.Typeface
-import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.ImageView
@@ -20,9 +18,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
-import java.time.LocalDate
-import java.util.concurrent.Executors
 
 /**
  * Metadata catalogue ported from lib/core/zmode:
@@ -72,8 +67,8 @@ class HomeMetadataController(
                 val featured = first.second.take(6)
                 binding.heroPager.adapter = HeroAdapter(featured)
                 binding.heroPager.offscreenPageLimit = 1
-                binding.heroTitle.text = first.title
-                binding.heroMeta.text = mode.uppercase() + "  ·  " + first.second.firstOrNull()?.genres.orEmpty()
+                binding.heroTitle.text = featured.firstOrNull()?.title ?: first.title
+                binding.heroMeta.text = listOf(mode.uppercase(), featured.firstOrNull()?.year.orEmpty(), featured.firstOrNull()?.score?.takeIf { it.isNotBlank() }?.let { "★ $it" }).filter { it.isNotBlank() }.joinToString("  ·  ")
                 binding.heroDetails.setOnClickListener {
                     Toast.makeText(binding.root.context, first.second.firstOrNull()?.title ?: first.title, Toast.LENGTH_SHORT).show()
                 }
@@ -90,7 +85,6 @@ class HomeMetadataController(
                 renderPosters(binding.recentPosters, first.second)
                 val second = rows.getOrNull(1)
                 if (second != null) {
-                    binding.root.findViewById<TextView?>(com.spyou.watch_app.R.id.recentSeeAll)?.text = "See All"
                     renderPosters(binding.popularPosters, second.second)
                 }
             } catch (e: Exception) {
@@ -213,7 +207,7 @@ class HomeMetadataController(
         if (title.isBlank() || cover.isBlank()) return null
         val genres = o.optJSONArray("genres")
         val genreText = genres?.let { a -> (0 until a.length()).map { a.optString(it) }.joinToString(" · ") }.orEmpty()
-        return Media(o.optString("id"), title, cover, o.optString("bannerImage").takeIf { it.isNotBlank() },
+        return Media(o.optString("id"), title, cover, o.optString("bannerImage").takeIf { it.isNotBlank() && it != "null" },
             o.optInt("averageScore").takeIf { it > 0 }?.let { "%.1f".format(it / 10.0) }.orEmpty(),
             "", o.optInt("seasonYear").takeIf { it > 0 }?.toString().orEmpty(), genreText, contentKind)
     }
@@ -237,7 +231,7 @@ class HomeMetadataController(
                 val title = o.optString("title").ifBlank { o.optString("name") }
                 val poster = o.optString("poster_path")
                 if (title.isBlank() || poster.isBlank()) return@mapNotNull null
-                val backdrop = o.optString("backdrop_path").takeIf { it.isNotBlank() }?.let { "https://image.tmdb.org/t/p/w1280$it" }
+                val backdrop = o.optString("backdrop_path").takeIf { it.isNotBlank() && it != "null" }?.let { "https://image.tmdb.org/t/p/w1280$it" }
                 val genres = o.optJSONArray("genre_ids")
                 Media(o.optString("id"), title, "https://image.tmdb.org/t/p/w500$poster", backdrop,
                     o.optDouble("vote_average").takeIf { it > 0 }?.let { "%.1f".format(it) }.orEmpty(),
