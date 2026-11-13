@@ -124,12 +124,13 @@ class SearchActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("search_filters", MODE_PRIVATE)
         val yearNow = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
         val isAnime = intent.getStringExtra("content_mode") == "Anime"
-        val defaults = linkedMapOf("sort" to "Popular", "year" to "Any", "status" to "Any", "score" to "Any", "format" to "Any", "genres" to "Any")
+        val defaults = linkedMapOf("sort" to "Popular", "year" to "Any", "status" to "Any", "score" to "Any", "season" to "Any", "format" to "Any", "genres" to "Any")
         val options = linkedMapOf(
             "sort" to listOf("Popular", "Score", "Trending", "Newest", "Title"),
             "year" to (yearNow downTo yearNow - 24).map { it.toString() },
             "status" to if (isAnime) listOf("Releasing", "Finished", "Not yet released", "Cancelled") else listOf("Returning Series", "Ended", "In Production", "Canceled"),
             "score" to listOf("50+", "60+", "70+", "80+", "90+"),
+            "season" to listOf("Winter", "Spring", "Summer", "Fall"),
             "format" to if (isAnime) listOf("TV", "Movie", "OVA", "Special") else listOf("Movie", "TV"),
             "genres" to if (isAnime) listOf("Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Horror", "Mahou Shoujo", "Mecha", "Music", "Mystery", "Psychological", "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural", "Thriller") else listOf("Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Science Fiction", "Thriller", "War", "Western")
         )
@@ -221,7 +222,7 @@ class SearchActivity : AppCompatActivity() {
         }
         addPair("sort", "year")
         addPair("status", "score")
-        addPair("format", null)
+        if (isAnime) addPair("season", "format") else addPair(null, "format")
         content.addView(makeCell("genres", "GENRES").apply { layoutParams = LinearLayout.LayoutParams(-1, dp(88)) })
         scroll.addView(content); panel.addView(scroll)
 
