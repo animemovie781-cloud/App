@@ -29,6 +29,11 @@ import java.net.URLEncoder
 /** Full provider directory and provider-specific movie/TV catalogue. */
 class StreamingServicesActivity : AppCompatActivity() {
     private data class Provider(val id: Int, val name: String, val logo: String?, val priority: Int)
+    companion object {
+        const val EXTRA_PROVIDER_ID = "streaming_provider_id"
+        const val EXTRA_PROVIDER_NAME = "streaming_provider_name"
+        private const val TMDB_API_KEY = "fab792d6c5936a7332045ca4565c7353"
+    }
     private val providers = mutableListOf<Provider>()
     private lateinit var adapter: ProviderAdapter
     private lateinit var status: TextView
@@ -73,7 +78,12 @@ class StreamingServicesActivity : AppCompatActivity() {
         root.addView(status)
         root.addView(grid, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
-        loadProviders()
+        val selectedId = intent.getIntExtra(EXTRA_PROVIDER_ID, -1)
+        if (selectedId > 0) {
+            val selectedName = intent.getStringExtra(EXTRA_PROVIDER_NAME) ?: "Streaming service"
+            status.text = "Loading $selectedName catalogue…"
+            openProvider(Provider(selectedId, selectedName, null, 0))
+        } else loadProviders()
     }
 
     private fun loadProviders() {
@@ -211,5 +221,4 @@ class StreamingServicesActivity : AppCompatActivity() {
     }
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
-    companion object { private const val TMDB_API_KEY = "fab792d6c5936a7332045ca4565c7353" }
 }
