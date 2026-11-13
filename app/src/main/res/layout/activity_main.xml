@@ -1,18 +1,18 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/z_bg">
     <FrameLayout android:id="@+id/contentHost" android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toTopOf="@id/dockRow" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent" />
     <LinearLayout android:id="@+id/dockRow" android:layout_width="0dp" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="16dp" android:paddingEnd="16dp"
-        android:paddingTop="8dp" android:paddingBottom="12dp" android:clipChildren="false" android:clipToPadding="false"
+        android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="12dp" android:paddingEnd="12dp"
+        android:paddingTop="0dp" android:paddingBottom="12dp" android:clipChildren="false" android:clipToPadding="false"
         app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent">
-        <LinearLayout android:id="@+id/bottomDock" android:layout_width="0dp" android:layout_height="68dp"
+        <com.github.dimezis.blurview.BlurView android:id="@+id/bottomDock" android:layout_width="0dp" android:layout_height="60dp"
             android:layout_weight="1" android:orientation="horizontal" android:gravity="center"
             android:background="@drawable/bg_dock" android:elevation="16dp" android:paddingStart="5dp" android:paddingEnd="5dp">
             <LinearLayout android:id="@+id/navHome" style="@style/DockTabItem">
-                <ImageView android:id="@+id/navHomeIcon" style="@style/DockTabIcon" android:src="@drawable/ic_dock_home_filled"/>
+                <ImageView android:id="@+id/navHomeIcon" style="@style/DockTabIcon" android:src="@drawable/dock_house.png"/>
                 <TextView android:id="@+id/navHomeLabel" style="@style/DockTabLabel" android:text="Home" android:textColor="@color/z_text_primary"/>
             </LinearLayout>
             <LinearLayout android:id="@+id/navSearch" style="@style/DockTabItem">
-                <ImageView android:id="@+id/navSearchIcon" style="@style/DockTabIcon" android:src="@drawable/ic_dock_bookmark"/>
+                <ImageView android:id="@+id/navSearchIcon" style="@style/DockTabIcon" android:src="@drawable/dock_bookmark.png"/>
                 <TextView android:id="@+id/navSearchLabel" style="@style/DockTabLabel" android:text="My List"/>
             </LinearLayout>
             <LinearLayout android:id="@+id/navLibrary" style="@style/DockTabItem">
@@ -23,7 +23,7 @@
                 <ImageView android:id="@+id/navSettingsIcon" style="@style/DockTabIcon" android:src="@drawable/ic_dock_profile_filled"/>
                 <TextView android:id="@+id/navSettingsLabel" style="@style/DockTabLabel" android:text="Profile"/>
             </LinearLayout>
-        </LinearLayout>
+        </com.github.dimezis.blurview.BlurView>
         <FrameLayout android:id="@+id/modeButton" android:layout_width="56dp" android:layout_height="56dp"
             android:layout_marginStart="8dp" android:background="@drawable/bg_mode_fab" android:elevation="18dp"
             android:clickable="true" android:focusable="true" android:foreground="?attr/selectableItemBackgroundBorderless">
