@@ -81,7 +81,7 @@ class MainActivity : AppCompatActivity() {
                 home.heroSection.requestLayout()
             }
             HomeMetadataController(this, home, contentMode).load()
-            home.actionSearch.setOnClickListener { startActivity(android.content.Intent(this, SearchActivity::class.java)) }
+            home.actionSearch.setOnClickListener { startActivity(android.content.Intent(this, SearchActivity::class.java).putExtra("content_mode", contentMode)) }
             home.homeScroll.setOnScrollChangeListener { _, scrollY, oldScrollY, _, _ ->
                 // Match DockScrollCollapse from the Flutter shell: accumulate
                 // 60dp in one direction, reset on a reversal, and always open
