@@ -67,16 +67,19 @@ class MainActivity : AppCompatActivity() {
         binding.contentHost.removeAllViews()
         val page: View = if (tab == Tab.HOME) {
             val home = FragmentHomeBinding.inflate(layoutInflater)
-            val density = resources.displayMetrics.density
-            val screenDp = resources.displayMetrics.heightPixels / density
-            home.heroSection.layoutParams = home.heroSection.layoutParams.apply {
-                // The original phone hero is deliberately cinematic: it occupies
-                // roughly two thirds of the viewport before the compact shortcut
-                // cards.  Keeping this in pixels avoids a short banner on dense
-                // screens, which was pushing the title/CTA into a cramped stack.
-                height = (screenDp * 0.62f).toInt().coerceIn(380, 560).let { (it * density).toInt() }
+            // Match FeaturedCarousel.heroHeightFor(): 62% of the actual app
+            // viewport, clamped to 380–560dp. Measure after the page is attached;
+            // displayMetrics includes system bars and made the native hero taller
+            // than Flutter on phones with a status/navigation inset.
+            home.root.post {
+                val density = resources.displayMetrics.density
+                val viewportDp = (binding.contentHost.height / density)
+                val targetDp = (viewportDp * 0.62f).coerceIn(380f, 560f)
+                home.heroSection.layoutParams = home.heroSection.layoutParams.apply {
+                    height = (targetDp * density).toInt()
+                }
+                home.heroSection.requestLayout()
             }
-            home.heroSection.requestLayout()
             HomeMetadataController(this, home, contentMode).load()
             home.homeScroll.setOnScrollChangeListener { _, scrollY, oldScrollY, _, _ ->
                 // Match DockScrollCollapse from the Flutter shell: accumulate
