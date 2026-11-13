@@ -158,7 +158,9 @@ class StreamingServicesActivity : AppCompatActivity() {
             } else {
                 startActivity(android.content.Intent(this@StreamingServicesActivity, SeeAllActivity::class.java)
                     .putExtra(SeeAllActivity.EXTRA_TITLE, provider.name)
-                    .putExtra(SeeAllActivity.EXTRA_ITEMS, items))
+                    .putExtra(SeeAllActivity.EXTRA_ITEMS, items)
+                    .putExtra(SeeAllActivity.EXTRA_PROVIDER_ID, provider.id)
+                    .putExtra(SeeAllActivity.EXTRA_REGION, region))
                 status.text = "${providers.size} services available in $region"
             }
         }
