@@ -16,11 +16,11 @@
                 <TextView android:id="@+id/navSearchLabel" style="@style/DockTabLabel" android:text="My List"/>
             </LinearLayout>
             <LinearLayout android:id="@+id/navLibrary" style="@style/DockTabItem">
-                <ImageView android:id="@+id/navLibraryIcon" style="@style/DockTabIcon" android:src="@drawable/ic_dock_sources"/>
+                <ImageView android:id="@+id/navLibraryIcon" style="@style/DockTabIcon" android:src="@drawable/ic_dock_puzzle"/>
                 <TextView android:id="@+id/navLibraryLabel" style="@style/DockTabLabel" android:text="Sources"/>
             </LinearLayout>
             <LinearLayout android:id="@+id/navSettings" style="@style/DockTabItem">
-                <ImageView android:id="@+id/navSettingsIcon" style="@style/DockTabIcon" android:src="@drawable/ic_dock_profile"/>
+                <ImageView android:id="@+id/navSettingsIcon" style="@style/DockTabIcon" android:src="@drawable/ic_dock_profile_filled"/>
                 <TextView android:id="@+id/navSettingsLabel" style="@style/DockTabLabel" android:text="Profile"/>
             </LinearLayout>
         </LinearLayout>
