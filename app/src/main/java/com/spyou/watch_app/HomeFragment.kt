@@ -1,4 +1,4 @@
-package com.spyou.watch_app
+package com.kanha.dev
 
 import android.os.Bundle
 import android.view.Gravity
@@ -10,7 +10,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.widget.ViewPager2
-import com.spyou.watch_app.databinding.FragmentHomeBinding
+import com.kanha.dev.databinding.FragmentHomeBinding
 
 /**
  * Native Home presentation. The Dart source uses FeaturedCarousel (max 6 items,
