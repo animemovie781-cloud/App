@@ -236,7 +236,10 @@ class HomeMetadataController(
     }
 
     private fun renderStreamingServices(providers: List<JSONObject>) {
-        val host = binding.additionalSections
+        // Cache-first and network refresh can both invoke renderRows(); always
+        // replace the single dedicated rail instead of appending duplicates.
+        val host = binding.streamingServicesSection
+        host.removeAllViews()
         val title = TextView(binding.root.context).apply {
             text = "Streaming services"
             setTextColor(Color.WHITE)
@@ -246,7 +249,7 @@ class HomeMetadataController(
         }
         // Insert before the metadata catalogue rails, matching the Dart home
         // row placement without shifting the hero or the Recently released row.
-        host.addView(title, 0, LinearLayout.LayoutParams(-1, -2))
+        host.addView(title, LinearLayout.LayoutParams(-1, -2))
         val scroller = android.widget.HorizontalScrollView(binding.root.context).apply {
             isHorizontalScrollBarEnabled = false
             clipToPadding = false
@@ -287,7 +290,7 @@ class HomeMetadataController(
             }
             rail.addView(tile)
         }
-        host.addView(scroller, 1, LinearLayout.LayoutParams(-1, -2))
+        host.addView(scroller, LinearLayout.LayoutParams(-1, -2))
     }
 
     private fun updateHeroMeta(item: Media?) {
