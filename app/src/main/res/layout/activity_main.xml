@@ -5,8 +5,9 @@
         android:paddingTop="0dp" android:paddingBottom="12dp" android:clipChildren="false" android:clipToPadding="false"
         app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent">
         <com.github.dimezis.blurview.BlurView android:id="@+id/bottomDock" android:layout_width="0dp" android:layout_height="60dp"
-            android:layout_weight="1" android:orientation="horizontal" android:gravity="center"
-            android:background="@drawable/bg_dock" android:elevation="16dp" android:paddingStart="5dp" android:paddingEnd="5dp">
+            android:layout_weight="1"
+            android:background="@drawable/bg_dock" android:elevation="16dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center" android:paddingStart="5dp" android:paddingEnd="5dp">
             <LinearLayout android:id="@+id/navHome" style="@style/DockTabItem">
                 <ImageView android:id="@+id/navHomeIcon" style="@style/DockTabIcon" android:src="@drawable/dock_house"/>
                 <TextView android:id="@+id/navHomeLabel" style="@style/DockTabLabel" android:text="Home" android:textColor="@color/z_text_primary"/>
@@ -22,6 +23,7 @@
             <LinearLayout android:id="@+id/navSettings" style="@style/DockTabItem">
                 <ImageView android:id="@+id/navSettingsIcon" style="@style/DockTabIcon" android:src="@drawable/ic_dock_profile_filled"/>
                 <TextView android:id="@+id/navSettingsLabel" style="@style/DockTabLabel" android:text="Profile"/>
+            </LinearLayout>
             </LinearLayout>
         </com.github.dimezis.blurview.BlurView>
         <FrameLayout android:id="@+id/modeButton" android:layout_width="56dp" android:layout_height="56dp"
