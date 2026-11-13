@@ -240,17 +240,29 @@ class HomeMetadataController(
         // replace the single dedicated rail instead of appending duplicates.
         val host = binding.streamingServicesSection
         host.removeAllViews()
+        val header = LinearLayout(binding.root.context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(26), dp(16), dp(14))
+        }
         val title = TextView(binding.root.context).apply {
             text = "Streaming services"
             setTextColor(Color.WHITE)
             textSize = 17f
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            setPadding(dp(16), dp(26), dp(16), dp(14))
+            layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
         }
-        // Insert before the metadata catalogue rails, matching the Dart home
-        // row placement without shifting the hero or the Recently released row.
-        title.setOnClickListener { openStreamingServicesDirectory() }
-        host.addView(title, LinearLayout.LayoutParams(-1, -2))
+        val seeAll = TextView(binding.root.context).apply {
+            text = "See All"
+            setTextColor(0xFFFF4D57.toInt())
+            textSize = 13f
+            setPadding(dp(8), dp(6), 0, dp(6))
+            setOnClickListener { openStreamingServicesDirectory() }
+        }
+        header.addView(title)
+        header.addView(seeAll)
+        // Insert before the metadata catalogue rails, matching the Dart home row.
+        host.addView(header, LinearLayout.LayoutParams(-1, -2))
         val scroller = android.widget.HorizontalScrollView(binding.root.context).apply {
             isHorizontalScrollBarEnabled = false
             clipToPadding = false
@@ -294,16 +306,6 @@ class HomeMetadataController(
             rail.addView(tile)
         }
         host.addView(scroller, LinearLayout.LayoutParams(-1, -2))
-        val seeAll = TextView(binding.root.context).apply {
-            text = "See All"
-            setTextColor(0xFFFF4D57.toInt())
-            textSize = 13f
-            setPadding(dp(16), dp(10), dp(16), dp(4))
-            gravity = android.view.Gravity.END
-            setOnClickListener { openStreamingServicesDirectory() }
-        }
-        // Keep the action in the same service section, not in a second rail.
-        host.addView(seeAll, LinearLayout.LayoutParams(-1, -2))
     }
 
     private fun openStreamingServicesDirectory() {
