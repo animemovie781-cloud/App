@@ -134,10 +134,10 @@ class MainActivity : AppCompatActivity() {
             icon.imageTintList = ColorStateList.valueOf(getColor(if (selected) R.color.z_accent else R.color.z_text_primary))
             label.setTextColor(getColor(if (selected) R.color.z_text_primary else R.color.z_text_secondary))
             container.alpha = if (selected) 1f else 0.86f
-            if (tab == Tab.HOME) icon.setImageResource(if (selected) R.drawable.ic_dock_home_filled else R.drawable.ic_dock_home)
-            if (tab == Tab.LIBRARY) icon.setImageResource(R.drawable.dock_bookmark)
-            if (tab == Tab.SEARCH) icon.setImageResource(R.drawable.ic_dock_puzzle)
-            if (tab == Tab.SETTINGS) icon.setImageResource(R.drawable.ic_dock_profile_filled)
+            if (tab == Tab.HOME) icon.setImageResource(R.drawable.ic_house)
+            if (tab == Tab.LIBRARY) icon.setImageResource(R.drawable.ic_bookmark)
+            if (tab == Tab.SEARCH) icon.setImageResource(R.drawable.ic_book_open_text)
+            if (tab == Tab.SETTINGS) icon.setImageResource(R.drawable.ic_settings)
         }
     }
 
