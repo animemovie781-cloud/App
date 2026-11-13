@@ -41,6 +41,9 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, state: Bundle?) {
         super.onViewCreated(view, state)
+        // No provider catalogue is connected in the native port yet. Keep the real empty state visible instead of showing fabricated hero artwork.
+        binding.heroPager.visibility = View.GONE
+        binding.heroDots.visibility = View.GONE
         binding.heroPager.adapter = HeroSlides()
         binding.heroPager.isUserInputEnabled = true
         binding.heroPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
@@ -82,38 +85,13 @@ class HomeFragment : Fragment() {
     }
 
     private fun addEmptyState(parent: LinearLayout) {
-        val card = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = dp(14).toFloat()
-                setColor(getColorCompat(R.color.z_surface))
-            }
-        }
-        val poster = FrameLayout(requireContext()).apply {
-            background = android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = dp(12).toFloat()
-                setColor(getColorCompat(R.color.z_surface_2))
-            }
-            addView(TextView(requireContext()).apply {
-                text = "＋"
-                textSize = 28f
-                setTextColor(getColorCompat(R.color.z_text_tertiary))
-                gravity = Gravity.CENTER
-            }, FrameLayout.LayoutParams(-1, -1))
-        }
-        card.addView(poster, LinearLayout.LayoutParams(dp(132), dp(188)))
-        card.addView(TextView(requireContext()).apply {
-            text = "Connect source"
-            textSize = 12f
+        parent.removeAllViews()
+        parent.addView(TextView(requireContext()).apply {
+            text = "Connect a source to discover titles"
+            textSize = 13f
             setTextColor(getColorCompat(R.color.z_text_secondary))
-            gravity = Gravity.CENTER
-            setPadding(0, dp(8), 0, 0)
-        })
-        parent.addView(card, LinearLayout.LayoutParams(dp(156), ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            marginEnd = dp(12)
-        })
+            setPadding(0, dp(4), dp(20), dp(4))
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
     }
 
     private inner class HeroSlides : androidx.recyclerview.widget.RecyclerView.Adapter<HeroSlides.Holder>() {
