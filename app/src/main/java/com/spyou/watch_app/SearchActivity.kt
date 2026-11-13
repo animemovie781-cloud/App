@@ -121,10 +121,61 @@ class SearchActivity : AppCompatActivity() {
     }
 
     private fun showSearchOptions() {
-        val options = arrayOf("Movies & TV", "Movies only", "TV shows only")
-        android.app.AlertDialog.Builder(this).setTitle("Search scope")
-            .setSingleChoiceItems(options, 0) { dialog, _ -> dialog.dismiss() }
-            .setNegativeButton("Cancel", null).show()
+        val dialog = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(12), dp(20), dp(16))
+            background = GradientDrawable().apply { setColor(0xFF0B0B0F.toInt()); cornerRadius = dp(24).toFloat() }
+        }
+        panel.addView(TextView(this).apply { text = "Filters"; setTextColor(Color.WHITE); textSize = 20f; setPadding(0, dp(8), 0, dp(18)) })
+        val scroll = android.widget.ScrollView(this)
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val prefs = getSharedPreferences("search_filters", MODE_PRIVATE)
+        val year = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+        val filters = listOf(
+            Triple("SORT BY", "sort", listOf("Popularity", "Score", "Trending", "Newest", "Title")),
+            Triple("YEAR", "year", (year downTo year - 24).map { it.toString() }),
+            Triple("STATUS", "status", listOf("Airing", "Finished", "Upcoming", "Cancelled")),
+            Triple("MINIMUM SCORE", "score", listOf("50+", "60+", "70+", "80+", "90+")),
+            Triple("FORMAT", "format", listOf("TV", "Movie")),
+            Triple("GENRES", "genres", listOf("Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Science Fiction", "Thriller", "War", "Western"))
+        )
+        filters.forEach { item ->
+            val default = if (item.second == "sort") "Popularity" else "Any"
+            val value = prefs.getString(item.second, default) ?: default
+            val cell = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(11), dp(14), dp(11))
+                background = GradientDrawable().apply { setColor(0xFF19181F.toInt()); cornerRadius = dp(16).toFloat() }
+                layoutParams = LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) }
+                isClickable = true; setOnClickListener {
+                    val choices = (listOf(default) + item.third).toTypedArray()
+                    android.app.AlertDialog.Builder(this@SearchActivity).setTitle(item.first)
+                        .setSingleChoiceItems(choices, choices.indexOf(value).coerceAtLeast(0)) { d, which ->
+                            prefs.edit().putString(item.second, choices[which]).apply(); d.dismiss(); dialog.dismiss(); showSearchOptions()
+                        }.setNegativeButton("Cancel", null).show()
+                }
+            }
+            cell.addView(TextView(this).apply { text = item.first; setTextColor(0xFFAAA8B2.toInt()); textSize = 11f; typeface = android.graphics.Typeface.DEFAULT_BOLD })
+            cell.addView(TextView(this).apply { text = value + "     v"; setTextColor(if (value != default) 0xFFFF4D57.toInt() else Color.WHITE); textSize = 16f; setPadding(0, dp(5), 0, 0) })
+            list.addView(cell)
+        }
+        scroll.addView(list); panel.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        panel.addView(android.widget.Button(this).apply {
+            text = "Apply"; setTextColor(Color.WHITE); background = GradientDrawable().apply { setColor(0xFFFF304F.toInt()); cornerRadius = dp(16).toFloat() }
+            layoutParams = LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(10) }
+            setOnClickListener { emptyLabel.text = "Filters applied"; dialog.dismiss() }
+        })
+        dialog.setContentView(panel)
+        dialog.setOnShowListener {
+            val view = dialog.findViewById<android.view.View>(com.google.android.material.R.id.design_bottom_sheet)
+            view?.let { sheet ->
+                val behavior = com.google.android.material.bottomsheet.BottomSheetBehavior.from(sheet)
+                behavior.isFitToContents = false; behavior.halfExpandedRatio = 0.64f; behavior.expandedOffset = dp(24)
+                behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_HALF_EXPANDED
+                sheet.setBackgroundColor(Color.TRANSPARENT)
+            }
+        }
+        dialog.show()
     }
 
     private fun startVoiceSearch() {
