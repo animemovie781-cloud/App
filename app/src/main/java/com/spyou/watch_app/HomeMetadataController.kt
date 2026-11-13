@@ -402,7 +402,8 @@ class HomeMetadataController(
         var last: Exception? = null
         for (host in hosts) {
             try {
-                val url = "$host$path?api_key=$TMDB_API_KEY&language=en-US&page=1"
+                val separator = if (path.contains("?")) "&" else "?"
+                val url = "$host$path${separator}api_key=$TMDB_API_KEY&language=en-US&page=1"
                 val connection = URL(url).openConnection() as HttpURLConnection
                 connection.connectTimeout = 5000
                 connection.readTimeout = 8000
