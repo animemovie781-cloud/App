@@ -1,4 +1,4 @@
-package com.spyou.watch_app
+package com.kanha.dev
 
 import android.graphics.Color
 import android.graphics.Typeface
@@ -11,7 +11,7 @@ import android.widget.Toast
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import coil.load
-import com.spyou.watch_app.databinding.FragmentHomeBinding
+import com.kanha.dev.databinding.FragmentHomeBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
