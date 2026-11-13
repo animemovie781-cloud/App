@@ -8,20 +8,11 @@
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="vertical" android:paddingBottom="126dp">
             <FrameLayout android:id="@+id/heroSection" android:layout_width="match_parent" android:layout_height="560dp">
+                <!-- Reference hero: edge-to-edge artwork, not an inset poster card. -->
+                <androidx.viewpager2.widget.ViewPager2 android:id="@+id/heroPager"
+                    android:layout_width="match_parent" android:layout_height="match_parent"/>
                 <View android:layout_width="match_parent" android:layout_height="match_parent"
-                    android:layout_marginStart="2dp" android:layout_marginEnd="2dp"
-                    android:layout_marginTop="64dp" android:layout_marginBottom="12dp"
-                    android:background="@drawable/bg_home_hero_glow"/>
-                <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent"
-                    android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
-                    android:layout_marginTop="90dp" android:layout_marginBottom="40dp"
-                    android:background="@drawable/bg_home_hero_card" android:clipToOutline="true">
-                    <androidx.viewpager2.widget.ViewPager2 android:id="@+id/heroPager"
-                        android:layout_width="match_parent" android:layout_height="match_parent"/>
-                    <View android:layout_width="match_parent" android:layout_height="match_parent"
-                        android:background="@drawable/bg_home_hero_scrim"/>
-                </FrameLayout>
-                <!-- Hero scrim is applied inside the rounded inset artwork card above. -->
+                    android:background="@drawable/bg_home_hero_scrim"/>
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="horizontal" android:gravity="center_vertical"
                     android:paddingStart="20dp" android:paddingEnd="20dp"
@@ -36,7 +27,7 @@
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="vertical" android:gravity="center_horizontal"
                     android:layout_gravity="bottom" android:paddingStart="28dp"
-                    android:paddingEnd="28dp" android:paddingBottom="24dp">
+                    android:paddingEnd="28dp" android:paddingBottom="64dp">
                     <ImageView android:id="@+id/heroLogo" android:layout_width="match_parent" android:layout_height="96dp" android:visibility="gone" android:scaleType="fitCenter" android:contentDescription="Title logo"/>
                     <TextView android:id="@+id/heroTitle" android:layout_width="match_parent"
                         android:layout_height="wrap_content" android:gravity="center"
