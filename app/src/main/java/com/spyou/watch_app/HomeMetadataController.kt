@@ -150,7 +150,8 @@ class HomeMetadataController(
     }
 
     /** TMDB title-logo lookup: multi-search, then localized images. */
-    private fun resolveTitleLogo(item: Media): String? = try {
+    private fun resolveTitleLogo(item: Media): String? {
+        return try {
         val query = java.net.URLEncoder.encode(item.title, "UTF-8")
         val search = tmdbRequest("/search/multi?query=" + query)
         val results = search.optJSONArray("results") ?: return null
@@ -170,7 +171,8 @@ class HomeMetadataController(
             if (chosen == null) chosen = logo
         }
         chosen?.optString("file_path")?.takeIf { it.isNotBlank() && it != "null" }?.let { "https://image.tmdb.org/t/p/w500" + it }
-    } catch (_: Exception) { null }
+        } catch (_: Exception) { null }
+    }
 
     private fun cachePrefs() = binding.root.context.getSharedPreferences("zangetsu_metadata_cache", android.content.Context.MODE_PRIVATE)
 
