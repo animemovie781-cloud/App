@@ -60,7 +60,7 @@ class SearchActivity : AppCompatActivity() {
         }
         query = EditText(this).apply {
             hint = "Search movies & TV"; setHintTextColor(0xFFA7A7B2.toInt())
-            setTextColor(Color.WHITE); textSize = 16f; singleLine = true
+            setTextColor(Color.WHITE); textSize = 16f; setSingleLine(true)
             imeOptions = EditorInfo.IME_ACTION_SEARCH; setPadding(dp(14), 0, dp(4), 0)
             background = null; layoutParams = LinearLayout.LayoutParams(0, -1, 1f)
             setOnEditorActionListener { _, action, _ ->
