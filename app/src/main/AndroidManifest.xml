@@ -9,6 +9,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Zangetsu"
         android:usesCleartextTraffic="false">
+        <activity android:name=".DetailActivity" android:exported="false" />
         <activity android:name=".CrashReportActivity" android:exported="false" />
         <activity android:name=".OnboardingActivity" android:exported="false" />
         <activity android:name=".ProfilePickerActivity" android:exported="false" />

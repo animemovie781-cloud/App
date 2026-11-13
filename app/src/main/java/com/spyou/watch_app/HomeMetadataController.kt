@@ -120,9 +120,7 @@ class HomeMetadataController(
         binding.heroTitle.text = featured.firstOrNull()?.title ?: first.first
         updateHeroMeta(featured.firstOrNull())
         loadHeroLogo(featured.firstOrNull())
-        binding.heroDetails.setOnClickListener {
-            Toast.makeText(binding.root.context, first.second.firstOrNull()?.title ?: first.first, Toast.LENGTH_SHORT).show()
-        }
+        binding.heroDetails.setOnClickListener { featured.getOrNull(binding.heroPager.currentItem)?.let { openDetail(it) } }
         renderDots(featured.size)
         binding.heroPager.registerOnPageChangeCallback(object : androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
@@ -459,10 +457,14 @@ class HomeMetadataController(
                 setPadding(0, dp(8), 0, 0)
             }
             card.addView(title)
+            card.setOnClickListener { openDetail(item) }
             target.addView(card)
         }
     }
-
+    private fun openDetail(item: Media) {
+        val payload = JSONObject().put("id",item.id).put("title",item.title).put("cover",item.cover).put("banner",item.banner).put("score",item.score).put("description",item.description).put("year",item.year).put("genres",item.genres).put("mediaType",item.mediaType).put("episodes",item.episodes)
+        binding.root.context.startActivity(DetailActivity.intent(binding.root.context,payload))
+    }
     private inner class HeroAdapter(private val items: List<Media>) :
         androidx.recyclerview.widget.RecyclerView.Adapter<HeroAdapter.Holder>() {
         inner class Holder(val image: ImageView) : androidx.recyclerview.widget.RecyclerView.ViewHolder(image)
