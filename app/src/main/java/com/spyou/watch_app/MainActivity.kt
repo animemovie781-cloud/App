@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private var dockCollapsed = false
     private var dockAnimator: ValueAnimator? = null
     private var expandedDockWidth = 0
+    private var scrollDirectionDistance = 0
     private enum class Tab { HOME, SEARCH, LIBRARY, SETTINGS }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,13 +79,29 @@ class MainActivity : AppCompatActivity() {
             home.heroSection.requestLayout()
             HomeMetadataController(this, home, contentMode).load()
             home.homeScroll.setOnScrollChangeListener { _, scrollY, oldScrollY, _, _ ->
-                // Same rule as the Flutter DockScrollCollapse listener: a
-                // downward read closes the labels into the compact capsule;
-                // any deliberate upward read brings the full dock back.
+                // Match DockScrollCollapse from the Flutter shell: accumulate
+                // 60dp in one direction, reset on a reversal, and always open
+                // at the top. Per-frame deltas are too small on slow drags.
                 val delta = scrollY - oldScrollY
-                when {
-                    delta > dp(8) && scrollY > dp(36) -> setDockCollapsed(true)
-                    delta < -dp(8) -> setDockCollapsed(false)
+                if (scrollY <= dp(8)) {
+                    scrollDirectionDistance = 0
+                    setDockCollapsed(false)
+                } else if (delta != 0) {
+                    if ((delta > 0 && scrollDirectionDistance < 0) ||
+                        (delta < 0 && scrollDirectionDistance > 0)) {
+                        scrollDirectionDistance = 0
+                    }
+                    scrollDirectionDistance += delta
+                    when {
+                        scrollDirectionDistance > dp(60) && !dockCollapsed -> {
+                            setDockCollapsed(true)
+                            scrollDirectionDistance = 0
+                        }
+                        scrollDirectionDistance < -dp(60) && dockCollapsed -> {
+                            setDockCollapsed(false)
+                            scrollDirectionDistance = 0
+                        }
+                    }
                 }
             }
             home.root
