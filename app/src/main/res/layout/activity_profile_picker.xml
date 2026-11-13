@@ -3,8 +3,22 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="@drawable/bg_profile_picker">
-    <View android:layout_width="match_parent" android:layout_height="match_parent"
+
+    <ImageView
+        android:id="@+id/profileBackdrop"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="top"
+        android:scaleType="centerCrop"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:background="@drawable/bg_hero_scrim" />
+
     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
         android:orientation="vertical" android:gravity="center_horizontal"
         android:paddingStart="24dp" android:paddingEnd="24dp">
