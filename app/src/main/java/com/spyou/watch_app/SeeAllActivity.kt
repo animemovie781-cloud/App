@@ -77,6 +77,15 @@ class SeeAllActivity : AppCompatActivity() {
         toolbar.addView(back); toolbar.addView(title); toolbar.addView(search); toolbar.addView(filter)
         grid = RecyclerView(this).apply {
             layoutManager = GridLayoutManager(this@SeeAllActivity, 3)
+            addItemDecoration(object : RecyclerView.ItemDecoration() {
+                override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
+                    val position = parent.getChildAdapterPosition(view)
+                    val column = position % 3
+                    outRect.left = dp(if (column == 0) 0 else 5)
+                    outRect.right = dp(if (column == 2) 0 else 5)
+                    outRect.bottom = dp(24)
+                }
+            })
             clipToPadding = false; setPadding(dp(16), dp(10), dp(16), dp(20))
             overScrollMode = View.OVER_SCROLL_NEVER
         }
@@ -209,7 +218,7 @@ class SeeAllActivity : AppCompatActivity() {
             val card = LinearLayout(parent.context).apply { orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(-1, -2) }
             val frame = FrameLayout(parent.context).apply {
                 background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(0xFF20212A.toInt()) }
-                clipToOutline = true; layoutParams = LinearLayout.LayoutParams(-1, dp(296))
+                clipToOutline = true; layoutParams = LinearLayout.LayoutParams(-1, dp(148))
             }
             val image = ImageView(parent.context).apply { layoutParams = FrameLayout.LayoutParams(-1, -1); scaleType = ImageView.ScaleType.CENTER_CROP }
             val score = TextView(parent.context).apply {
