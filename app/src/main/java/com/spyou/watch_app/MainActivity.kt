@@ -31,8 +31,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.navHome.setOnClickListener { showTab(Tab.HOME) }
-        binding.navSearch.setOnClickListener { showTab(Tab.SEARCH) }
-        binding.navLibrary.setOnClickListener { showTab(Tab.LIBRARY) }
+        binding.navSearch.setOnClickListener { showTab(Tab.LIBRARY) }
+        binding.navLibrary.setOnClickListener { showTab(Tab.SEARCH) }
         binding.navSettings.setOnClickListener { startActivity(android.content.Intent(this, ProfilePickerActivity::class.java)) }
         if (savedInstanceState != null) selectedTab = runCatching {
             Tab.valueOf(savedInstanceState.getString("selected_tab", "HOME")!!)
