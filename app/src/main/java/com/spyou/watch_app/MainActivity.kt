@@ -50,8 +50,8 @@ class MainActivity : AppCompatActivity() {
             .setFrameClearDrawable(binding.root.background)
             // Flutter's liquid nav uses a subtle blur (3), not a frosted
             // sheet.  A radius of 22 made the native port look like a grey box.
-            .setBlurRadius(5f)
-            .setOverlayColor(Color.argb(5, 255, 255, 255))
+            .setBlurRadius(3f)
+            .setOverlayColor(Color.argb(12, 255, 255, 255))
         binding.navHome.setOnClickListener { showTab(Tab.HOME) }
         binding.navSearch.setOnClickListener { showTab(Tab.LIBRARY) }
         binding.navLibrary.setOnClickListener { showTab(Tab.SEARCH) }
@@ -132,6 +132,13 @@ class MainActivity : AppCompatActivity() {
             val selected = tab == selectedTab
             val label = container.getChildAt(1) as TextView
             icon.imageTintList = ColorStateList.valueOf(getColor(if (selected) R.color.z_accent else R.color.z_text_primary))
+            // Flutter GlassTabBar's selected indicator is a subtle accent wash,
+            // not a solid Material pill.
+            container.background = if (selected) GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dp(18).toFloat()
+                setColor(Color.argb(36, 255, 77, 87))
+            } else null
             label.setTextColor(getColor(if (selected) R.color.z_text_primary else R.color.z_text_secondary))
             container.alpha = if (selected) 1f else 0.86f
             if (tab == Tab.HOME) icon.setImageResource(R.drawable.ic_house)
