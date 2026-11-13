@@ -203,7 +203,7 @@ class MainActivity : AppCompatActivity() {
                 .setBlurRadius(22f)
                 .setOverlayColor(Color.argb(112, 22, 21, 31))
             background = GradientDrawable().apply {
-                cornerRadius = dp(28).toFloat()
+                cornerRadius = dp(24).toFloat()
                 setColor(Color.argb(118, 24, 23, 34))
                 setStroke(dp(1), Color.argb(32, 255, 255, 255))
             }
@@ -211,7 +211,7 @@ class MainActivity : AppCompatActivity() {
         }
         val list = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(12))
+            setPadding(dp(10), dp(8), dp(10), dp(8))
         }
         // Use the exact Material icon PNGs supplied for the original mode menu.
         val options = listOf(
@@ -224,8 +224,8 @@ class MainActivity : AppCompatActivity() {
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(12), 0, dp(10), 0)
-                layoutParams = LinearLayout.LayoutParams(-1, dp(64))
+                setPadding(dp(10), 0, dp(8), 0)
+                layoutParams = LinearLayout.LayoutParams(-1, dp(52))
                 isClickable = true
                 isFocusable = true
                 background = android.util.TypedValue().let {
@@ -235,7 +235,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             val icon = ImageView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(dp(32), dp(32))
+                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22))
                 // Keep the thin clapperboard/book strokes legible at popup scale.
                 scaleType = ImageView.ScaleType.FIT_CENTER
                 setImageResource(iconRes)
@@ -246,13 +246,13 @@ class MainActivity : AppCompatActivity() {
             val title = TextView(this).apply {
                 text = label
                 setTextColor(Color.WHITE)
-                textSize = 16f
+                textSize = 15f
                 typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                setPadding(dp(18), 0, 0, 0)
+                setPadding(dp(14), 0, 0, 0)
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
             }
             val check = ImageView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(dp(24), dp(24))
+                layoutParams = LinearLayout.LayoutParams(dp(18), dp(18))
                 setImageResource(R.drawable.mode_check_red)
                 visibility = if (contentMode == value) View.VISIBLE else View.INVISIBLE
                 scaleType = ImageView.ScaleType.FIT_CENTER
@@ -266,7 +266,7 @@ class MainActivity : AppCompatActivity() {
             list.addView(row)
         }
         glass.addView(list, FrameLayout.LayoutParams(-1, -2))
-        modePopup = PopupWindow(glass, dp(250), -2, true).apply {
+        modePopup = PopupWindow(glass, dp(236), -2, true).apply {
             isOutsideTouchable = true
             setBackgroundDrawable(GradientDrawable().apply { setColor(Color.TRANSPARENT) })
             elevation = dp(24).toFloat()
