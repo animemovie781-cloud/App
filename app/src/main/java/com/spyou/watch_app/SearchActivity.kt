@@ -121,61 +121,196 @@ class SearchActivity : AppCompatActivity() {
     }
 
     private fun showSearchOptions() {
-        val dialog = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+        val prefs = getSharedPreferences("search_filters", MODE_PRIVATE)
+        val yearNow = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+        val isAnime = intent.getStringExtra("content_mode") == "Anime"
+        val defaults = linkedMapOf("sort" to "Popular", "year" to "Any", "status" to "Any", "score" to "Any", "format" to "Any", "genres" to "Any")
+        val options = linkedMapOf(
+            "sort" to listOf("Popular", "Score", "Trending", "Newest", "Title"),
+            "year" to (yearNow downTo yearNow - 24).map { it.toString() },
+            "status" to if (isAnime) listOf("Releasing", "Finished", "Not yet released", "Cancelled") else listOf("Returning Series", "Ended", "In Production", "Canceled"),
+            "score" to listOf("50+", "60+", "70+", "80+", "90+"),
+            "format" to if (isAnime) listOf("TV", "Movie", "OVA", "Special") else listOf("Movie", "TV"),
+            "genres" to if (isAnime) listOf("Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Horror", "Mahou Shoujo", "Mecha", "Music", "Mystery", "Psychological", "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural", "Thriller") else listOf("Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Science Fiction", "Thriller", "War", "Western")
+        )
+        val selected = defaults.mapValues { (key, value) -> prefs.getString(key, value) ?: value }.toMutableMap()
+        val genres = selected["genres"]?.split(", ")?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+        if (selected["genres"] == "Any") genres.clear()
+
+        val sheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(12), dp(20), dp(16))
-            background = GradientDrawable().apply { setColor(0xFF0B0B0F.toInt()); cornerRadius = dp(24).toFloat() }
+            setPadding(dp(20), dp(10), dp(20), dp(16))
+            background = GradientDrawable().apply {
+                setColor(0xFF0B0B0F.toInt())
+                cornerRadii = floatArrayOf(dp(24).toFloat(), dp(24).toFloat(), dp(24).toFloat(), dp(24).toFloat(), 0f, 0f, 0f, 0f)
+            }
         }
-        panel.addView(TextView(this).apply { text = "Filters"; setTextColor(Color.WHITE); textSize = 20f; setPadding(0, dp(8), 0, dp(18)) })
-        val scroll = android.widget.ScrollView(this)
-        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val prefs = getSharedPreferences("search_filters", MODE_PRIVATE)
-        val year = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
-        val filters = listOf(
-            Triple("SORT BY", "sort", listOf("Popularity", "Score", "Trending", "Newest", "Title")),
-            Triple("YEAR", "year", (year downTo year - 24).map { it.toString() }),
-            Triple("STATUS", "status", listOf("Airing", "Finished", "Upcoming", "Cancelled")),
-            Triple("MINIMUM SCORE", "score", listOf("50+", "60+", "70+", "80+", "90+")),
-            Triple("FORMAT", "format", listOf("TV", "Movie")),
-            Triple("GENRES", "genres", listOf("Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Science Fiction", "Thriller", "War", "Western"))
-        )
-        filters.forEach { item ->
-            val default = if (item.second == "sort") "Popularity" else "Any"
-            val value = prefs.getString(item.second, default) ?: default
-            val cell = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(11), dp(14), dp(11))
-                background = GradientDrawable().apply { setColor(0xFF19181F.toInt()); cornerRadius = dp(16).toFloat() }
-                layoutParams = LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) }
-                isClickable = true; setOnClickListener {
-                    val choices = (listOf(default) + item.third).toTypedArray()
-                    android.app.AlertDialog.Builder(this@SearchActivity).setTitle(item.first)
-                        .setSingleChoiceItems(choices, choices.indexOf(value).coerceAtLeast(0)) { d, which ->
-                            prefs.edit().putString(item.second, choices[which]).apply(); d.dismiss(); dialog.dismiss(); showSearchOptions()
-                        }.setNegativeButton("Cancel", null).show()
+        panel.addView(android.view.View(this).apply {
+            background = GradientDrawable().apply { setColor(0xFF292833.toInt()); cornerRadius = dp(3).toFloat() }
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(4)).apply { gravity = Gravity.CENTER; bottomMargin = dp(14) }
+        })
+        val heading = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(-1, dp(42)) }
+        heading.addView(TextView(this).apply {
+            text = "Filters"; setTextColor(Color.WHITE); textSize = 20f
+            typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
+        })
+        heading.addView(TextView(this).apply {
+            text = "Reset"; setTextColor(0xFFFF4D57.toInt()); textSize = 14f
+            visibility = if (selected.any { (k,v) -> v != defaults[k] }) android.view.View.VISIBLE else android.view.View.GONE
+            setOnClickListener { prefs.edit().clear().apply(); sheet.dismiss(); showSearchOptions() }
+        })
+        panel.addView(heading)
+
+        val scroll = android.widget.ScrollView(this).apply {
+            isFillViewport = false
+            overScrollMode = android.view.View.OVER_SCROLL_NEVER
+            layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
+        }
+        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(4), 0, dp(8)) }
+        fun makeCell(key: String, label: String): LinearLayout {
+            val value = if (key == "genres") { if (genres.isEmpty()) "Any" else genres.joinToString(", ") } else selected[key] ?: "Any"
+            val active = if (key == "genres") genres.isNotEmpty() else value != defaults[key]
+            return LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(14), dp(10), dp(12), dp(9))
+                background = GradientDrawable().apply {
+                    setColor(0xFF19181F.toInt()); cornerRadius = dp(16).toFloat()
+                    if (active) setStroke(dp(1), 0x99FF4D57.toInt())
+                }
+                layoutParams = LinearLayout.LayoutParams(0, dp(88), 1f).apply { if (key == "genres") { width = -1 } }
+                isClickable = true; isFocusable = true
+                addView(TextView(this@SearchActivity).apply {
+                    text = label; setTextColor(0xFFA7A5AF.toInt()); textSize = 11f
+                    typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD); letterSpacing = 0.035f
+                })
+                val valueRow = LinearLayout(this@SearchActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                    layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) }
+                }
+                valueRow.addView(TextView(this@SearchActivity).apply {
+                    text = value; setTextColor(if (active) 0xFFFF4D57.toInt() else Color.WHITE)
+                    textSize = 16f; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+                    typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+                    layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
+                })
+                valueRow.addView(TextView(this@SearchActivity).apply {
+                    text = "⌄"; textSize = 22f; setTextColor(0xFFA7A7B2.toInt()); gravity = Gravity.CENTER
+                    layoutParams = LinearLayout.LayoutParams(dp(22), dp(24))
+                })
+                addView(valueRow)
+                setOnClickListener {
+                    if (key == "genres") showGenrePicker(options[key] ?: emptyList(), genres) { picked ->
+                        genres.clear(); genres.addAll(picked); selected["genres"] = if (genres.isEmpty()) "Any" else genres.joinToString(", ")
+                        sheet.dismiss(); showSearchOptions()
+                    } else showValuePicker(label, options[key] ?: emptyList(), selected[key] ?: defaults[key]!!) { picked ->
+                        selected[key] = picked; sheet.dismiss(); showSearchOptions()
+                    }
                 }
             }
-            cell.addView(TextView(this).apply { text = item.first; setTextColor(0xFFAAA8B2.toInt()); textSize = 11f; typeface = android.graphics.Typeface.DEFAULT_BOLD })
-            cell.addView(TextView(this).apply { text = value + "     v"; setTextColor(if (value != default) 0xFFFF4D57.toInt() else Color.WHITE); textSize = 16f; setPadding(0, dp(5), 0, 0) })
-            list.addView(cell)
         }
-        scroll.addView(list); panel.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        fun addPair(left: String?, right: String?) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; layoutParams = LinearLayout.LayoutParams(-1, -2) }
+            if (left != null) row.addView(makeCell(left, left.uppercase())) else row.addView(android.view.View(this).apply { layoutParams = LinearLayout.LayoutParams(0, dp(88), 1f) })
+            row.addView(android.view.View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(10), 1) })
+            if (right != null) row.addView(makeCell(right, right.uppercase())) else row.addView(android.view.View(this).apply { layoutParams = LinearLayout.LayoutParams(0, dp(88), 1f) })
+            content.addView(row)
+            content.addView(android.view.View(this).apply { layoutParams = LinearLayout.LayoutParams(1, dp(8)) })
+        }
+        addPair("sort", "year")
+        addPair("status", "score")
+        addPair("format", null)
+        content.addView(makeCell("genres", "GENRES").apply { layoutParams = LinearLayout.LayoutParams(-1, dp(88)) })
+        scroll.addView(content); panel.addView(scroll)
+
         panel.addView(android.widget.Button(this).apply {
-            text = "Apply"; setTextColor(Color.WHITE); background = GradientDrawable().apply { setColor(0xFFFF304F.toInt()); cornerRadius = dp(16).toFloat() }
-            layoutParams = LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(10) }
-            setOnClickListener { emptyLabel.text = "Filters applied"; dialog.dismiss() }
+            text = "Apply"; isAllCaps = false; textSize = 16f
+            typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            background = GradientDrawable().apply { setColor(0xFFFF304F.toInt()); cornerRadius = dp(14).toFloat() }
+            layoutParams = LinearLayout.LayoutParams(-1, dp(54)).apply { topMargin = dp(8) }
+            setOnClickListener {
+                val edit = prefs.edit()
+                selected.forEach { (key, value) -> edit.putString(key, value) }
+                edit.putString("genres", if (genres.isEmpty()) "Any" else genres.joinToString(", ")).apply()
+                emptyLabel.text = if (query.text.isNullOrEmpty()) "Filters applied" else "Search for “\${query.text}”"
+                sheet.dismiss()
+            }
         })
-        dialog.setContentView(panel)
-        dialog.setOnShowListener {
-            val view = dialog.findViewById<android.view.View>(com.google.android.material.R.id.design_bottom_sheet)
-            view?.let { sheet ->
-                val behavior = com.google.android.material.bottomsheet.BottomSheetBehavior.from(sheet)
-                behavior.isFitToContents = false; behavior.halfExpandedRatio = 0.64f; behavior.expandedOffset = dp(24)
+        sheet.setContentView(panel)
+        sheet.setOnShowListener {
+            val bottom = sheet.findViewById<android.view.View>(com.google.android.material.R.id.design_bottom_sheet)
+            bottom?.let { view ->
+                view.setBackgroundColor(Color.TRANSPARENT)
+                val behavior = com.google.android.material.bottomsheet.BottomSheetBehavior.from(view)
+                behavior.isFitToContents = false; behavior.skipCollapsed = false
+                behavior.expandedOffset = dp(24); behavior.halfExpandedRatio = 0.54f
+                behavior.peekHeight = (resources.displayMetrics.heightPixels * 0.48f).toInt()
                 behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_HALF_EXPANDED
-                sheet.setBackgroundColor(Color.TRANSPARENT)
             }
         }
+        sheet.show()
+    }
+
+    private fun showValuePicker(title: String, values: List<String>, current: String, onPicked: (String) -> Unit) {
+        val dialog = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+        val list = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(18), dp(20), dp(16))
+            background = GradientDrawable().apply { setColor(0xFF0B0B0F.toInt()); cornerRadii = floatArrayOf(dp(20).toFloat(), dp(20).toFloat(), dp(20).toFloat(), dp(20).toFloat(), 0f, 0f, 0f, 0f) }
+        }
+        list.addView(TextView(this).apply { text = title; setTextColor(Color.WHITE); textSize = 20f; setPadding(0, 0, 0, dp(12)); typeface = android.graphics.Typeface.DEFAULT_BOLD })
+        (listOf("Any") + values).distinct().forEach { value ->
+            list.addView(TextView(this).apply {
+                text = if (value == current) "✓    $value" else value
+                setTextColor(if (value == current) 0xFFFF4D57.toInt() else Color.WHITE)
+                textSize = 16f; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(8), 0, dp(8), 0)
+                layoutParams = LinearLayout.LayoutParams(-1, dp(48))
+                setOnClickListener { dialog.dismiss(); onPicked(value) }
+            })
+        }
+        dialog.setContentView(list)
+        dialog.setOnShowListener { dialog.findViewById<android.view.View>(com.google.android.material.R.id.design_bottom_sheet)?.setBackgroundColor(Color.TRANSPARENT) }
         dialog.show()
+    }
+
+    private fun showGenrePicker(values: List<String>, current: Set<String>, onPicked: (Set<String>) -> Unit) {
+        val dialog = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(18), dp(20), dp(18))
+            background = GradientDrawable().apply { setColor(0xFF0B0B0F.toInt()); cornerRadii = floatArrayOf(dp(20).toFloat(), dp(20).toFloat(), dp(20).toFloat(), dp(20).toFloat(), 0f, 0f, 0f, 0f) }
+        }
+        panel.addView(TextView(this).apply { text = "Genres"; setTextColor(Color.WHITE); textSize = 20f; typeface = android.graphics.Typeface.DEFAULT_BOLD })
+        val chosen = current.toMutableSet()
+        val scroll = android.widget.ScrollView(this)
+        val wrap = android.widget.GridLayout(this).apply { columnCount = 3; useDefaultMargins = true }
+        values.forEach { genre ->
+            val chip = TextView(this).apply {
+                text = genre; gravity = Gravity.CENTER; setPadding(dp(10), dp(9), dp(10), dp(9)); textSize = 12f
+                fun style() {
+                    setTextColor(if (chosen.contains(genre)) 0xFFFF4D57.toInt() else Color.WHITE)
+                    background = GradientDrawable().apply {
+                        cornerRadius = dp(20).toFloat()
+                        setColor(if (chosen.contains(genre)) 0x33FF4D57 else 0xFF19181F.toInt())
+                        if (chosen.contains(genre)) setStroke(dp(1), 0xFFFF4D57.toInt())
+                    }
+                }
+                style()
+                setOnClickListener { if (!chosen.add(genre)) chosen.remove(genre); style() }
+            }
+            wrap.addView(chip, android.widget.GridLayout.LayoutParams().apply {
+                width = 0; columnSpec = android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f)
+                setMargins(dp(3), dp(4), dp(3), dp(4))
+            })
+        }
+        scroll.addView(wrap); panel.addView(scroll, LinearLayout.LayoutParams(-1, dp(300)))
+        panel.addView(android.widget.Button(this).apply {
+            text = "Done"; isAllCaps = false; setTextColor(Color.WHITE)
+            background = GradientDrawable().apply { setColor(0xFFFF304F.toInt()); cornerRadius = dp(14).toFloat() }
+            layoutParams = LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(12) }
+            setOnClickListener { dialog.dismiss(); onPicked(chosen) }
+        })
+        dialog.setContentView(panel); dialog.show()
     }
 
     private fun startVoiceSearch() {
