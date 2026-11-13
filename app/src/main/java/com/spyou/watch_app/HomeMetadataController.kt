@@ -122,15 +122,34 @@ class HomeMetadataController(
                     marginEnd = dp(12)
                 }
             }
-            val poster = ImageView(binding.root.context).apply {
+            val posterFrame = FrameLayout(binding.root.context).apply {
                 layoutParams = LinearLayout.LayoutParams(dp(116), dp(166))
-                scaleType = ImageView.ScaleType.CENTER_CROP
-                clipToOutline = true
                 background = rounded(12, 0xFF20212A.toInt())
+                clipToOutline = true
+            }
+            val poster = ImageView(binding.root.context).apply {
+                layoutParams = FrameLayout.LayoutParams(-1, -1)
+                scaleType = ImageView.ScaleType.CENTER_CROP
                 load(item.cover) { crossfade(true) }
                 contentDescription = item.title
             }
-            card.addView(poster)
+            posterFrame.addView(poster)
+            if (item.score.isNotBlank()) {
+                val score = TextView(binding.root.context).apply {
+                    text = "★ " + item.score
+                    setTextColor(0xFFFFD54F.toInt())
+                    textSize = 10f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setPadding(dp(6), dp(3), dp(6), dp(3))
+                    background = rounded(10, 0xCC101116.toInt())
+                }
+                val badgeLp = FrameLayout.LayoutParams(-2, -2, android.view.Gravity.TOP or android.view.Gravity.END).apply {
+                    topMargin = dp(7)
+                    marginEnd = dp(7)
+                }
+                posterFrame.addView(score, badgeLp)
+            }
+            card.addView(posterFrame)
             val title = TextView(binding.root.context).apply {
                 text = item.title
                 setTextColor(Color.WHITE)
@@ -140,14 +159,6 @@ class HomeMetadataController(
                 setPadding(0, dp(7), 0, 0)
             }
             card.addView(title)
-            if (item.score.isNotBlank()) {
-                val score = TextView(binding.root.context).apply {
-                    text = "★ ${item.score}"
-                    setTextColor(0xFFFFD54F.toInt())
-                    textSize = 11f
-                }
-                card.addView(score)
-            }
             target.addView(card)
         }
     }
