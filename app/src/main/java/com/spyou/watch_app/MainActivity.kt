@@ -2,6 +2,10 @@ package com.spyou.watch_app
 
 import android.os.Bundle
 import android.view.View
+import android.content.res.ColorStateList
+import android.widget.ImageView
+import android.widget.PopupMenu
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import com.spyou.watch_app.databinding.ActivityMainBinding
@@ -34,6 +38,7 @@ class MainActivity : AppCompatActivity() {
         binding.navSearch.setOnClickListener { showTab(Tab.LIBRARY) }
         binding.navLibrary.setOnClickListener { showTab(Tab.SEARCH) }
         binding.navSettings.setOnClickListener { startActivity(android.content.Intent(this, ProfilePickerActivity::class.java)) }
+        binding.modeButton.setOnClickListener { showModeMenu() }
         if (savedInstanceState != null) selectedTab = runCatching {
             Tab.valueOf(savedInstanceState.getString("selected_tab", "HOME")!!)
         }.getOrDefault(Tab.HOME)
@@ -57,11 +62,35 @@ class MainActivity : AppCompatActivity() {
             }.root
         }
         binding.contentHost.addView(page)
-        listOf(Tab.HOME to binding.navHome, Tab.SEARCH to binding.navSearch, Tab.LIBRARY to binding.navLibrary, Tab.SETTINGS to binding.navSettings)
-            .forEach { (item, view) ->
-                view.setTextColor(getColor(if (item == selectedTab) R.color.z_accent else R.color.z_text_secondary))
-                view.alpha = if (item == selectedTab) 1f else .78f
-            }
+        updateDockSelection()
+    }
+
+    private fun updateDockSelection() {
+        val items = listOf(
+            Triple(Tab.HOME, binding.navHome, binding.navHomeIcon),
+            Triple(Tab.LIBRARY, binding.navSearch, binding.navSearchIcon),
+            Triple(Tab.SEARCH, binding.navLibrary, binding.navLibraryIcon),
+            Triple(Tab.SETTINGS, binding.navSettings, binding.navSettingsIcon)
+        )
+        items.forEach { (tab, container, icon) ->
+            val selected = tab == selectedTab
+            val label = container.getChildAt(1) as TextView
+            val tint = if (selected) getColor(R.color.z_accent) else getColor(R.color.z_text_primary)
+            icon.imageTintList = ColorStateList.valueOf(tint)
+            label.setTextColor(getColor(if (selected) R.color.z_text_primary else R.color.z_text_secondary))
+            container.alpha = if (selected) 1f else 0.86f
+            if (tab == Tab.HOME) icon.setImageResource(if (selected) R.drawable.ic_dock_home_filled else R.drawable.ic_dock_home)
+        }
+    }
+
+    private fun showModeMenu() {
+        val menu = PopupMenu(this, binding.modeButton)
+        listOf("Anime", "Movie / TV", "Manga", "Novel").forEach { menu.menu.add(it) }
+        menu.setOnMenuItemClickListener { item ->
+            android.widget.Toast.makeText(this, "${item.title} mode selected", android.widget.Toast.LENGTH_SHORT).show()
+            true
+        }
+        menu.show()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
