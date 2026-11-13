@@ -41,6 +41,17 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, state: Bundle?) {
         super.onViewCreated(view, state)
+        // Keep shortcut PNGs at the original Dart UI's 20dp icon size.
+        listOf(binding.scheduleCard, binding.genresCard).forEach { card ->
+            val label = (0 until (card as ViewGroup).childCount)
+                .mapNotNull { card.getChildAt(it) as? TextView }.firstOrNull()
+            label?.let { text ->
+                val drawables = text.compoundDrawablesRelative
+                drawables[0]?.setBounds(0, 0, dp(20), dp(20))
+                text.setCompoundDrawablesRelative(drawables[0], drawables[1], drawables[2], drawables[3])
+                text.compoundDrawablePadding = dp(8)
+            }
+        }
         // No provider catalogue is connected in the native port yet. Keep the real empty state visible instead of showing fabricated hero artwork.
         binding.heroPager.visibility = View.GONE
         binding.heroDots.visibility = View.GONE
