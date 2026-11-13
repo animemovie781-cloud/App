@@ -8,11 +8,11 @@
             android:layout_weight="1" android:orientation="horizontal" android:gravity="center"
             android:background="@drawable/bg_dock" android:elevation="16dp" android:paddingStart="5dp" android:paddingEnd="5dp">
             <LinearLayout android:id="@+id/navHome" style="@style/DockTabItem">
-                <ImageView android:id="@+id/navHomeIcon" style="@style/DockTabIcon" android:src="@drawable/dock_house.png"/>
+                <ImageView android:id="@+id/navHomeIcon" style="@style/DockTabIcon" android:src="@drawable/dock_house"/>
                 <TextView android:id="@+id/navHomeLabel" style="@style/DockTabLabel" android:text="Home" android:textColor="@color/z_text_primary"/>
             </LinearLayout>
             <LinearLayout android:id="@+id/navSearch" style="@style/DockTabItem">
-                <ImageView android:id="@+id/navSearchIcon" style="@style/DockTabIcon" android:src="@drawable/dock_bookmark.png"/>
+                <ImageView android:id="@+id/navSearchIcon" style="@style/DockTabIcon" android:src="@drawable/dock_bookmark"/>
                 <TextView android:id="@+id/navSearchLabel" style="@style/DockTabLabel" android:text="My List"/>
             </LinearLayout>
             <LinearLayout android:id="@+id/navLibrary" style="@style/DockTabItem">
