@@ -133,6 +133,7 @@ class HomeMetadataController(
             }
         })
         binding.recentHeading.text = first.first
+        binding.recentSeeAll.setOnClickListener { openSeeAll(first.first, first.second) }
         renderPosters(binding.recentPosters, first.second)
         val second = rows.getOrNull(1)
         renderAdditionalSections(rows.drop(1))
@@ -141,19 +142,43 @@ class HomeMetadataController(
         (second?.second?.firstOrNull() ?: first.second.getOrNull(1))?.let { binding.genresArt.load(it.cover) { allowHardware(false); crossfade(true) } }
     }
 
+    private fun openSeeAll(title: String, items: List<Media>) {
+        val array = org.json.JSONArray()
+        items.forEach { item ->
+            array.put(JSONObject().put("id", item.id).put("title", item.title).put("cover", item.cover)
+                .put("score", item.score).put("year", item.year).put("mediaType", item.mediaType))
+        }
+        binding.root.context.startActivity(android.content.Intent(binding.root.context, SeeAllActivity::class.java)
+            .putExtra(SeeAllActivity.EXTRA_TITLE, title).putExtra(SeeAllActivity.EXTRA_ITEMS, array.toString()))
+    }
+
     private fun renderAdditionalSections(rows: List<Pair<String, List<Media>>>) {
         val host = binding.additionalSections
         host.removeAllViews()
         rows.forEach { (heading, items) ->
             if (items.isEmpty()) return@forEach
+            val header = LinearLayout(binding.root.context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(dp(16), dp(24), dp(16), 0)
+            }
             val title = TextView(binding.root.context).apply {
                 text = heading
                 setTextColor(Color.WHITE)
                 textSize = 17f
                 typeface = Typeface.create("sans-serif", Typeface.BOLD)
-                setPadding(dp(16), dp(24), dp(16), 0)
+                layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
             }
-            host.addView(title, LinearLayout.LayoutParams(-1, -2))
+            val seeAll = TextView(binding.root.context).apply {
+                text = "See All"
+                setTextColor(0xFFFF4D57.toInt())
+                textSize = 13f
+                setPadding(dp(8), dp(6), 0, dp(6))
+                setOnClickListener { openSeeAll(heading, items) }
+            }
+            header.addView(title)
+            header.addView(seeAll)
+            host.addView(header, LinearLayout.LayoutParams(-1, -2))
             val scroller = android.widget.HorizontalScrollView(binding.root.context).apply {
                 isHorizontalScrollBarEnabled = false
                 clipToPadding = false
