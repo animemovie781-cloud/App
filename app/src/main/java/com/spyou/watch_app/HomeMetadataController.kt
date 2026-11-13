@@ -88,8 +88,8 @@ class HomeMetadataController(
                 if (second != null) {
                     renderPosters(binding.popularPosters, second.second)
                 }
-                first.second.firstOrNull()?.let { binding.scheduleArt.load(it.cover) { crossfade(true) } }
-                (second?.second?.firstOrNull() ?: first.second.getOrNull(1))?.let { binding.genresArt.load(it.cover) { crossfade(true) } }
+                first.second.firstOrNull()?.let { binding.scheduleArt.load(it.cover) { allowHardware(false); crossfade(true) } }
+                (second?.second?.firstOrNull() ?: first.second.getOrNull(1))?.let { binding.genresArt.load(it.cover) { allowHardware(false); crossfade(true) } }
             } catch (e: Exception) {
                 binding.heroTitle.text = "Metadata couldn't load"
                 binding.heroMeta.text = e.message?.take(90) ?: "PLEASE TRY AGAIN"
@@ -130,7 +130,7 @@ class HomeMetadataController(
             val poster = ImageView(binding.root.context).apply {
                 layoutParams = FrameLayout.LayoutParams(-1, -1)
                 scaleType = ImageView.ScaleType.CENTER_CROP
-                load(item.cover) { crossfade(true) }
+                load(item.cover) { allowHardware(false); crossfade(true) }
                 contentDescription = item.title
             }
             posterFrame.addView(poster)
@@ -176,7 +176,7 @@ class HomeMetadataController(
         }
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val item = items[position]
-            holder.image.load(item.banner?.takeIf { it.isNotBlank() } ?: item.cover) { crossfade(true) }
+            holder.image.load(item.banner?.takeIf { it.isNotBlank() } ?: item.cover) { allowHardware(false); crossfade(true) }
             holder.image.contentDescription = item.title
         }
     }
