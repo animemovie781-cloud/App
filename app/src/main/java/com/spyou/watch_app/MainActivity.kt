@@ -1,6 +1,7 @@
 package com.kanha.dev
 
 import android.os.Bundle
+import android.animation.ValueAnimator
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -15,6 +16,7 @@ import android.widget.PopupWindow
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
+import androidx.core.animation.doOnEnd
 import com.kanha.dev.databinding.ActivityMainBinding
 import com.kanha.dev.databinding.FragmentHomeBinding
 import com.kanha.dev.databinding.FragmentSimpleBinding
@@ -26,6 +28,9 @@ class MainActivity : AppCompatActivity() {
     private var selectedTab = Tab.HOME
     private var contentMode = "Anime"
     private var modePopup: PopupWindow? = null
+    private var dockCollapsed = false
+    private var dockAnimator: ValueAnimator? = null
+    private var expandedDockWidth = 0
     private enum class Tab { HOME, SEARCH, LIBRARY, SETTINGS }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,8 +77,19 @@ class MainActivity : AppCompatActivity() {
             }
             home.heroSection.requestLayout()
             HomeMetadataController(this, home, contentMode).load()
+            home.homeScroll.setOnScrollChangeListener { _, scrollY, oldScrollY, _, _ ->
+                // Same rule as the Flutter DockScrollCollapse listener: a
+                // downward read closes the labels into the compact capsule;
+                // any deliberate upward read brings the full dock back.
+                val delta = scrollY - oldScrollY
+                when {
+                    delta > dp(8) && scrollY > dp(36) -> setDockCollapsed(true)
+                    delta < -dp(8) -> setDockCollapsed(false)
+                }
+            }
             home.root
         } else {
+            setDockCollapsed(false, immediate = true)
             FragmentSimpleBinding.inflate(layoutInflater).apply {
                 pageTitle.text = when (tab) { Tab.SEARCH -> "Sources"; Tab.LIBRARY -> "My List"; Tab.SETTINGS -> "Profile"; else -> "Home" }
                 pageDescription.text = when (tab) {
@@ -107,6 +123,57 @@ class MainActivity : AppCompatActivity() {
             if (tab == Tab.SETTINGS) icon.setImageResource(R.drawable.ic_dock_profile_filled)
         }
     }
+
+    /** Mirrors _LiquidGlassTabBar: full 60dp labelled dock → 50dp icon capsule. */
+    private fun setDockCollapsed(collapsed: Boolean, immediate: Boolean = false) {
+        if (dockCollapsed == collapsed && !immediate) return
+        val wasCollapsed = dockCollapsed
+        dockCollapsed = collapsed
+        binding.bottomDock.post {
+            val dock = binding.bottomDock
+            if (!wasCollapsed && dock.width > 0) expandedDockWidth = dock.width
+            val fullWidth = expandedDockWidth.takeIf { it > 0 } ?: dock.width.takeIf { it > 0 } ?: return@post
+            val compactWidth = minOf(fullWidth, dp(4 * 52 + 8))
+            val fromWidth = (dock.layoutParams as LinearLayout.LayoutParams).width.takeIf { it > 0 } ?: fullWidth
+            val fromHeight = dock.height.takeIf { it > 0 } ?: dp(60)
+            val toWidth = if (collapsed) compactWidth else fullWidth
+            val toHeight = if (collapsed) dp(50) else dp(60)
+            val labels = listOf(binding.navHomeLabel, binding.navSearchLabel, binding.navLibraryLabel, binding.navSettingsLabel)
+
+            dockAnimator?.cancel()
+            fun apply(progress: Float) {
+                val lp = dock.layoutParams as LinearLayout.LayoutParams
+                lp.weight = 0f
+                lp.width = (fromWidth + (toWidth - fromWidth) * progress).toInt()
+                lp.height = (fromHeight + (toHeight - fromHeight) * progress).toInt()
+                dock.layoutParams = lp
+                labels.forEach { it.alpha = if (collapsed) 1f - progress else progress }
+            }
+            if (immediate) {
+                apply(1f)
+                if (!collapsed) restoreDockWeight(dock, labels)
+                return@post
+            }
+            dockAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 180L
+                interpolator = android.view.animation.PathInterpolator(0.32f, 0.72f, 0f, 1f)
+                addUpdateListener { apply(it.animatedValue as Float) }
+                doOnEnd { if (!collapsed) restoreDockWeight(dock, labels) }
+                start()
+            }
+        }
+    }
+
+    private fun restoreDockWeight(dock: View, labels: List<TextView>) {
+        val lp = dock.layoutParams as LinearLayout.LayoutParams
+        lp.width = 0
+        lp.weight = 1f
+        lp.height = dp(60)
+        dock.layoutParams = lp
+        labels.forEach { it.alpha = 1f }
+    }
+
+    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
     /** Frosted mode selector patterned after metadata_switch_sheet.dart. */
     private fun showModeMenu() {
