@@ -42,8 +42,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         binding.bottomDock.setupWith(binding.root as ViewGroup)
             .setFrameClearDrawable(binding.root.background)
-            .setBlurRadius(18f)
-            .setOverlayColor(Color.argb(38, 24, 24, 32))
+            .setBlurRadius(22f)
+            .setOverlayColor(Color.argb(12, 255, 255, 255))
         binding.navHome.setOnClickListener { showTab(Tab.HOME) }
         binding.navSearch.setOnClickListener { showTab(Tab.LIBRARY) }
         binding.navLibrary.setOnClickListener { showTab(Tab.SEARCH) }
