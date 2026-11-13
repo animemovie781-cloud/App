@@ -235,10 +235,13 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             val icon = ImageView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(dp(26), dp(26))
+                layoutParams = LinearLayout.LayoutParams(dp(32), dp(32))
+                // Keep the thin clapperboard/book strokes legible at popup scale.
+                scaleType = ImageView.ScaleType.FIT_CENTER
                 setImageResource(iconRes)
                 imageTintList = ColorStateList.valueOf(Color.WHITE)
                 scaleType = ImageView.ScaleType.FIT_CENTER
+                adjustViewBounds = true
             }
             val title = TextView(this).apply {
                 text = label
