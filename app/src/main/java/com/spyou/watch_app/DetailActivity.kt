@@ -138,7 +138,14 @@ class DetailActivity : AppCompatActivity() {
    actionCells.add(icon);cell.addView(icon,LinearLayout.LayoutParams(dp(24),dp(24)))
    cell.addView(label(item.first,11f,secondary,true).apply{gravity=Gravity.CENTER;setPadding(0,dp(6),0,0)})
    cell.setOnClickListener{when(index){
-    0->{saved=!saved;icon.setImageResource(if(saved)item.third else item.second)}
+    0->{
+     saved=!saved
+     icon.setImageResource(if(saved)item.third else item.second)
+     val prefs=getSharedPreferences("zangetsu_tracker",MODE_PRIVATE)
+     val followed=prefs.getStringSet("followed_anime_titles",emptySet()).orEmpty().toMutableSet()
+     if(saved) followed.add(title()) else followed.remove(title())
+     prefs.edit().putStringSet("followed_anime_titles",followed).apply()
+    }
     1->{notified=!notified;icon.setImageResource(if(notified)item.third else item.second)}
     2->{val share=Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,title());startActivity(Intent.createChooser(share,"Share title"))}
     3->{val url=data.optString("url");if(url.startsWith("http"))startActivity(Intent(Intent.ACTION_VIEW,android.net.Uri.parse(url)))else toast("No external page available")}
@@ -166,7 +173,8 @@ class DetailActivity : AppCompatActivity() {
    val result=withContext(kotlinx.coroutines.Dispatchers.IO){runCatching{DetailMetadataRepository().load(data)}}
    if(result.isFailure || result.getOrNull()==null) {
     episodeArea.removeAllViews()
-    episodeArea.addView(label("AniList metadata could not load. Check your connection and tap to retry.",14f,red,true).apply {
+    val reason = result.exceptionOrNull()?.message?.takeIf { it.isNotBlank() } ?: "Check your connection and tap to retry."
+    episodeArea.addView(label("AniList metadata could not load: $reason",14f,red,true).apply {
      setPadding(0,dp(18),0,dp(12))
      setOnClickListener { loadDetailMetadata() }
     })
