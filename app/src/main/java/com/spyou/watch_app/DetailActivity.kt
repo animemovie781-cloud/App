@@ -169,7 +169,7 @@ class DetailActivity : AppCompatActivity() {
     val row=TextView(this).apply{
      text="Episode $n";textSize=15f;setTextColor(Color.WHITE);gravity=Gravity.CENTER_VERTICAL
      setPadding(dp(16),0,0,0);background=shape(if(n==selectedEpisode)0xFF343541.toInt() else panel,10f)
-     setOnClickListener{selectedEpisode=n;renderTab();if(selectedTab=="Cast")loadTmdbDetails()}
+     setOnClickListener{selectedEpisode=n;renderTab();loadTmdbDetails()}
     }
     episodeArea.addView(row,LinearLayout.LayoutParams(-1,dp(54)).apply{bottomMargin=dp(8)})
    }
@@ -178,7 +178,7 @@ class DetailActivity : AppCompatActivity() {
    for(n in episodes() downTo 1){
     val tile=FrameLayout(this).apply{
      background=shape(if(n==selectedEpisode)0xFF343541.toInt() else panel,10f)
-     setOnClickListener{selectedEpisode=n;if(selectedTab=="Cast")loadTmdbDetails();renderTab()}
+     setOnClickListener{selectedEpisode=n;renderTab();loadTmdbDetails()}
     }
     tile.addView(label(n.toString(),15f,Color.WHITE,true).apply{gravity=Gravity.CENTER})
     grid.addView(tile,GridLayout.LayoutParams().apply{width=0;height=dp(56);columnSpec=GridLayout.spec(GridLayout.UNDEFINED,1f);setMargins(dp(4),dp(5),dp(4),dp(5))})
