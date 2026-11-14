@@ -221,7 +221,7 @@ class ScheduleActivity : AppCompatActivity() {
         cal.add(Calendar.DAY_OF_YEAR, 7)
         val end = cal.timeInMillis / 1000L
 
-        val query = "query(\\$start:Int,\\$end:Int,\\$page:Int){Page(page:\\$page,perPage:50){pageInfo{hasNextPage} airingSchedules(airingAt_greater:\\$start,airingAt_lesser:\\$end,sort:TIME){episode airingAt media{idMal isAdult title{english romaji} coverImage{large}}}}}"
+        val query = "query(\$start:Int,\$end:Int,\$page:Int){Page(page:\$page,perPage:50){pageInfo{hasNextPage} airingSchedules(airingAt_greater:\$start,airingAt_lesser:\$end,sort:TIME){episode airingAt media{idMal isAdult title{english romaji} coverImage{large}}}}}"
         val result = mutableListOf<Entry>()
 
         // Two pages are enough to populate the first week quickly. Further
