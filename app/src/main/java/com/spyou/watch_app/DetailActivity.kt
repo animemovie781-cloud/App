@@ -48,6 +48,7 @@ class DetailActivity : AppCompatActivity() {
  private var episodeCount = 0
  private var aniListDetailsLoaded = false
  private var aniListMalId: Int? = null
+ private var aniListItem: JSONObject? = null
  private val bg = 0xFF0B0B0F.toInt()
  private val surface = 0xFF16161C.toInt()
  private val panel = 0xFF20212A.toInt()
@@ -260,14 +261,15 @@ class DetailActivity : AppCompatActivity() {
   }
  }
  private fun renderCastTab(){
-  val headingText = if(isMovie()) "Movie Cast" else "Episode $selectedEpisode Cast"
-  val heading=label(headingText,20f,Color.WHITE,true)
-  episodeArea.addView(heading,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(18);bottomMargin=dp(12)})
-  if(tmdbLoading){episodeArea.addView(label("Loading cast from TMDB…",14f,secondary));return}
-  val cast=tmdbBundle?.cast.orEmpty()
+  val headingText = if(isMovie()) "Movie Cast" else "Anime Cast"
+  episodeArea.addView(label(headingText,20f,Color.WHITE,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(18);bottomMargin=dp(12)})
+  val aniCast = aniListCastPeople()
+  val cast = aniCast.ifEmpty { tmdbBundle?.cast.orEmpty() }
+  if(cast.isEmpty() && tmdbLoading){
+   episodeArea.addView(label("Loading cast information…",14f,secondary));return
+  }
   if(cast.isEmpty()){
-   val emptyMessage = if(isMovie()) "No movie cast information available." else "No cast information available for this episode."
-   episodeArea.addView(label(tmdbError ?: emptyMessage,14f,secondary));return
+   episodeArea.addView(label(tmdbError ?: "No cast information available for this title.",14f,secondary));return
   }
   val scroller=HorizontalScrollView(this).apply{isHorizontalScrollBarEnabled=false;clipToPadding=false}
   val rail=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
@@ -281,13 +283,32 @@ class DetailActivity : AppCompatActivity() {
    rail.addView(card)
   }
   scroller.addView(rail);episodeArea.addView(scroller,LinearLayout.LayoutParams(-1,-2))
-  episodeArea.addView(label("Data provided by TMDB",11f,0xFF6E6E78.toInt()).apply{setPadding(0,dp(14),0,0)})
+  episodeArea.addView(label(if(aniCast.isNotEmpty()) "Characters and Japanese voice actors · AniList" else "Cast information · TMDB",11f,0xFF6E6E78.toInt()).apply{setPadding(0,dp(14),0,0)})
+ }
+
+ private fun aniListCastPeople(): List<TmdbPerson> {
+  val edges = aniListItem?.optJSONObject("characters")?.optJSONArray("edges") ?: return emptyList()
+  return (0 until edges.length()).mapNotNull { index ->
+   val edge = edges.optJSONObject(index) ?: return@mapNotNull null
+   val character = edge.optJSONObject("node") ?: return@mapNotNull null
+   val characterName = character.optJSONObject("name")?.optString("full").orEmpty()
+   if (characterName.isBlank()) return@mapNotNull null
+   val characterImage = character.optJSONObject("image")?.optString("large")
+   val voiceActor = edge.optJSONArray("voiceActors")?.optJSONObject(0)
+   val voiceActorName = voiceActor?.optJSONObject("name")?.optString("full").orEmpty()
+   val image = characterImage?.takeIf { it.startsWith("http") }
+       ?: voiceActor?.optJSONObject("image")?.optString("large")?.takeIf { it.startsWith("http") }
+   TmdbPerson(character.optInt("id"), characterName,
+       voiceActorName.takeIf { it.isNotBlank() }?.let { "Japanese VA: $it" } ?: edge.optString("role"),
+       image)
+  }
  }
 
  private fun renderRelationsTab(){
   episodeArea.addView(label("Related titles",20f,Color.WHITE,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(18);bottomMargin=dp(12)})
-  if(tmdbLoading){episodeArea.addView(label("Finding related titles…",14f,secondary));return}
-  val items=tmdbBundle?.relations.orEmpty()
+  val aniRelations = aniListRelatedTitles()
+  val items = aniRelations.ifEmpty { tmdbBundle?.relations.orEmpty() }
+  if(items.isEmpty() && tmdbLoading){episodeArea.addView(label("Finding related titles…",14f,secondary));return}
   if(items.isEmpty()){episodeArea.addView(label(tmdbError ?: "No related titles available.",14f,secondary));return}
   val scroller=HorizontalScrollView(this).apply{isHorizontalScrollBarEnabled=false;clipToPadding=false}
   val rail=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
@@ -297,17 +318,66 @@ class DetailActivity : AppCompatActivity() {
    if(item.posterUrl!=null) poster.load(item.posterUrl){crossfade(true);allowHardware(false)}
    card.addView(poster,LinearLayout.LayoutParams(dp(112),dp(164)))
    card.addView(label(item.title,12f,Color.WHITE,true).apply{maxLines=2;ellipsize=TextUtils.TruncateAt.END;setPadding(0,dp(7),0,0)})
+   val relationType = aniListItem?.optJSONObject("relations")?.optJSONArray("edges")
+   val edgeType = relationType?.let { arr ->
+    (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }
+      .firstOrNull { it.optJSONObject("node")?.optInt("id") == item.id }?.optString("relationType")
+   }.orEmpty()
+   if(edgeType.isNotBlank()) card.addView(label(edgeType.replace('_',' ').lowercase().replaceFirstChar{it.uppercase()},10f,secondary))
    rail.addView(card)
   }
   scroller.addView(rail);episodeArea.addView(scroller,LinearLayout.LayoutParams(-1,-2))
-  episodeArea.addView(label("Recommendations and similar titles · TMDB",11f,0xFF6E6E78.toInt()).apply{setPadding(0,dp(14),0,0)})
+  episodeArea.addView(label(if(aniRelations.isNotEmpty()) "Sequels, prequels and related media · AniList" else "Recommendations and similar titles · TMDB",11f,0xFF6E6E78.toInt()).apply{setPadding(0,dp(14),0,0)})
+ }
+
+ private fun aniListRelatedTitles(): List<TmdbRelated> {
+  val edges = aniListItem?.optJSONObject("relations")?.optJSONArray("edges") ?: return emptyList()
+  val seen = linkedSetOf<Int>()
+  return (0 until edges.length()).mapNotNull { index ->
+   val edge = edges.optJSONObject(index) ?: return@mapNotNull null
+   val node = edge.optJSONObject("node") ?: return@mapNotNull null
+   val id = node.optInt("id")
+   if (id <= 0 || !seen.add(id)) return@mapNotNull null
+   val titleNode = node.optJSONObject("title")
+   val title = listOf("english","romaji","native").map { titleNode?.optString(it).orEmpty() }
+       .firstOrNull { it.isNotBlank() && it != "null" } ?: return@mapNotNull null
+   val image = node.optJSONObject("coverImage")?.optString("large")?.takeIf { it.startsWith("http") }
+   TmdbRelated(id,title,"",image,"anime")
+  }.take(30)
  }
 
  private fun renderDetailsTab(){
   episodeArea.addView(label("Information",20f,Color.WHITE,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(18);bottomMargin=dp(10)})
+  val ani = aniListItem
+  if(ani != null){
+   val titleNode=ani.optJSONObject("title")
+   val format=ani.optString("format")
+   val score=ani.optDouble("averageScore",0.0).takeIf{it>0}?.let{String.format("%.1f / 100",it)}.orEmpty()
+   val genres=ani.optJSONArray("genres")?.let{arr->(0 until arr.length()).map{arr.optString(it)}.filter{it.isNotBlank()}.joinToString(" · ")}.orEmpty()
+   val studios=ani.optJSONObject("studios")?.optJSONArray("nodes")?.let{arr->(0 until arr.length()).mapNotNull{arr.optJSONObject(it)?.optString("name")?.takeIf{n->n.isNotBlank()}}.take(8).joinToString(" · ")}.orEmpty()
+   val staff=ani.optJSONObject("staff")?.optJSONArray("edges")?.let{arr->
+    (0 until arr.length()).mapNotNull{index->val edge=arr.optJSONObject(index)?:return@mapNotNull null;val role=edge.optString("role");val name=edge.optJSONObject("node")?.optJSONObject("name")?.optString("full").orEmpty();if(name.isBlank())null else "$name ($role)"}.take(12).joinToString(" · ")
+   }.orEmpty()
+   val rows=listOf(
+    "Format" to format,"Score" to score,"Status" to ani.optString("status"),
+    "Season" to ani.optString("season"),"Year" to ani.optInt("seasonYear").takeIf{it>0}?.toString().orEmpty(),
+    "Episodes" to ani.optInt("episodes").takeIf{it>0}?.toString().orEmpty(),
+    "Genres" to genres,"Studios" to studios,"Staff" to staff,
+    "Source" to ani.optString("source")
+   )
+   rows.filter{it.second.isNotBlank()}.forEach{(key,value)->
+    val row=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(0,dp(10),0,dp(10))}
+    row.addView(label(key.uppercase(),11f,0xFF777782.toInt(),true))
+    row.addView(label(value,14f,Color.WHITE).apply{setPadding(0,dp(5),0,0)})
+    episodeArea.addView(row,LinearLayout.LayoutParams(-1,-2))
+    episodeArea.addView(View(this).apply{setBackgroundColor(0x22FFFFFF)},LinearLayout.LayoutParams(-1,dp(1)))
+   }
+   episodeArea.addView(label("Metadata provided by AniList",11f,0xFF6E6E78.toInt()).apply{setPadding(0,dp(12),0,0)})
+   return
+  }
   if(tmdbLoading){episodeArea.addView(label("Loading title details…",14f,secondary));return}
   val details=tmdbBundle?.details
-  if(details==null){episodeArea.addView(label(tmdbError ?: "TMDB details are not available.",14f,secondary));return}
+  if(details==null){episodeArea.addView(label(tmdbError ?: "Title details are not available.",14f,secondary));return}
   val genres=details.optJSONArray("genres")?.let{arr->(0 until arr.length()).mapNotNull{arr.optJSONObject(it)?.optString("name")?.takeIf{n->n.isNotBlank()}}.joinToString(" · ")}.orEmpty()
   val studios=details.optJSONArray("production_companies")?.let{arr->(0 until arr.length()).mapNotNull{arr.optJSONObject(it)?.optString("name")?.takeIf{n->n.isNotBlank()}}.take(5).joinToString(" · ")}.orEmpty()
   val networks=details.optJSONArray("networks")?.let{arr->(0 until arr.length()).mapNotNull{arr.optJSONObject(it)?.optString("name")?.takeIf{n->n.isNotBlank()}}.take(4).joinToString(" · ")}.orEmpty()
@@ -354,7 +424,7 @@ class DetailActivity : AppCompatActivity() {
   val kind=data.optString("mediaType")
   val id=data.optString("id").toIntOrNull() ?: return null
   if(kind !in listOf("anime","manga","novel")) return null
-  val query="query(\$id:Int!){Media(id:\$id){id idMal title{english romaji native} description(asHtml:false) episodes format seasonYear status genres studios{nodes{name}} staff{edges{role node{name{full}}}}}}"
+  val query="query(\$id:Int!){Media(id:\$id){id idMal title{english romaji native} description(asHtml:false) episodes format seasonYear season status averageScore source genres studios{nodes{name}} staff{edges{role node{name{full}}}} characters(page:1,perPage:30,sort:ROLE){edges{role node{id name{full} image{large}} voiceActors(language:JAPANESE){id name{full} image{large}}}} relations{edges{relationType(version:2) node{id type format title{english romaji native} coverImage{large} startDate{year}}}}}}"
   val body=JSONObject().put("query",query).put("variables",JSONObject().put("id",id))
   val connection=java.net.URL("https://graphql.anilist.co").openConnection() as java.net.HttpURLConnection
   connection.requestMethod="POST";connection.connectTimeout=7000;connection.readTimeout=10000;connection.doOutput=true
@@ -369,6 +439,7 @@ class DetailActivity : AppCompatActivity() {
 
  private fun applyDetailMetadata(item:JSONObject?){
   if(item==null) return
+  aniListItem = item
   val names=item.optJSONObject("title")
   val correctTitle=listOf("english","romaji","native").map{names?.optString(it).orEmpty()}.firstOrNull{it.isNotBlank()&&it!="null"}
   if(!correctTitle.isNullOrBlank()) data.put("title",correctTitle)
