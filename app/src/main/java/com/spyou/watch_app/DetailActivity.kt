@@ -169,56 +169,58 @@ class DetailActivity : AppCompatActivity() {
  private fun renderEpisodesTab(){
   val heading=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
   heading.addView(label("Episodes",22f,Color.WHITE,true),LinearLayout.LayoutParams(0,-2,1f))
-  val toggle=FrameLayout(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(panel)};setOnClickListener{listMode=!listMode;renderTab()}}
+  val toggle=FrameLayout(this).apply{
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(panel)}
+   contentDescription=if(listMode) "Switch to thumbnail view" else "Switch to simple list"
+   setOnClickListener{listMode=!listMode;renderTab()}
+  }
   toggle.addView(image(if(listMode)R.drawable.detail_grid_view else R.drawable.detail_list_view,20),FrameLayout.LayoutParams(dp(20),dp(20),Gravity.CENTER))
   heading.addView(toggle,LinearLayout.LayoutParams(dp(36),dp(36)).apply{rightMargin=dp(8)})
   val more=FrameLayout(this).apply{
    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(panel)}
    setOnClickListener{
     PopupMenu(this@DetailActivity,this).apply{
-     val newest=menu.add("Newest first")
-     val oldest=menu.add("Oldest first")
-     newest.isCheckable=true;oldest.isCheckable=true
-     newest.isChecked=newestFirst;oldest.isChecked=!newestFirst
-     setOnMenuItemClickListener{item->
-      val nextNewest=item.title.toString()=="Newest first"
-      if(newestFirst!=nextNewest){newestFirst=nextNewest;renderTab()}
-      true
-     }
+     val newest=menu.add("Newest first");val oldest=menu.add("Oldest first")
+     newest.isCheckable=true;oldest.isCheckable=true;newest.isChecked=newestFirst;oldest.isChecked=!newestFirst
+     setOnMenuItemClickListener{item->val next=item.title.toString()=="Newest first";if(newestFirst!=next){newestFirst=next;renderTab()};true}
     }.show()
    }
   }
   more.addView(image(R.drawable.detail_more,20),FrameLayout.LayoutParams(dp(20),dp(20),Gravity.CENTER))
   heading.addView(more,LinearLayout.LayoutParams(dp(36),dp(36)))
   episodeArea.addView(heading,LinearLayout.LayoutParams(-1,dp(54)).apply{topMargin=dp(8);bottomMargin=dp(10)})
-  if(episodes()<=0){
-   episodeArea.addView(label("Episode information has not been announced yet.",14f,secondary).apply{setPadding(0,dp(8),0,dp(12))})
-   return
-  }
-  val episodeNumbers=(1..episodes()).let{if(newestFirst) it.reversed() else it}
+  if(episodes()<=0){episodeArea.addView(label("Episode information has not been announced yet.",14f,secondary));return}
+  val episodeMap=tmdbBundle?.episodes.orEmpty().associateBy{it.number}
+  val numbers=(1..episodes()).let{if(newestFirst)it.reversed() else it}
   if(listMode){
-   for(n in episodeNumbers){
-    val row=TextView(this).apply{
-     text="Episode $n";textSize=15f;setTextColor(Color.WHITE);gravity=Gravity.CENTER_VERTICAL
-     setPadding(dp(16),0,0,0);background=shape(if(n==selectedEpisode)0xFF343541.toInt() else panel,10f)
-     setOnClickListener{selectedEpisode=n;renderTab();loadTmdbDetails()}
-    }
+   numbers.forEach{n->
+    val row=TextView(this).apply{text="Episode $n";textSize=15f;setTextColor(Color.WHITE);gravity=Gravity.CENTER_VERTICAL;setPadding(dp(16),0,0,0);background=shape(if(n==selectedEpisode)0xFF343541.toInt() else panel,10f);setOnClickListener{selectedEpisode=n;renderTab();loadTmdbDetails()}}
     episodeArea.addView(row,LinearLayout.LayoutParams(-1,dp(54)).apply{bottomMargin=dp(8)})
    }
   }else{
-   val grid=GridLayout(this).apply{columnCount=5;useDefaultMargins=false}
-   for(n in episodeNumbers){
-    val tile=FrameLayout(this).apply{
-     background=shape(if(n==selectedEpisode)0xFF343541.toInt() else panel,10f)
-     setOnClickListener{selectedEpisode=n;renderTab();loadTmdbDetails()}
-    }
-    tile.addView(label(n.toString(),15f,Color.WHITE,true).apply{gravity=Gravity.CENTER})
-    grid.addView(tile,GridLayout.LayoutParams().apply{width=0;height=dp(56);columnSpec=GridLayout.spec(GridLayout.UNDEFINED,1f);setMargins(dp(4),dp(5),dp(4),dp(5))})
+   numbers.forEach{n->
+    val ep=episodeMap[n]
+    val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(0,0,0,dp(15))}
+    val top=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
+    val thumbFrame=FrameLayout(this).apply{background=shape(panel,10f);clipToOutline=true;layoutParams=LinearLayout.LayoutParams(dp(124),dp(72));setOnClickListener{selectedEpisode=n;renderTab();loadTmdbDetails()}}
+    val thumb=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP;setBackgroundColor(panel);contentDescription=ep?.name ?: "Episode $n";val imageUrl=ep?.stillUrl ?: data.optString("cover").takeIf{it.startsWith("http")};if(imageUrl!=null)load(imageUrl){crossfade(true);allowHardware(false)}}
+    thumbFrame.addView(thumb,FrameLayout.LayoutParams(-1,-1))
+    if(ep!=null&&ep.rating>0)thumbFrame.addView(label("★ %.1f".format(ep.rating),10f,Color.WHITE,true).apply{background=shape(0xCC000000.toInt(),5f);setPadding(dp(5),dp(3),dp(5),dp(3))},FrameLayout.LayoutParams(-2,-2,Gravity.TOP or Gravity.START).apply{leftMargin=dp(5);topMargin=dp(5)})
+    thumbFrame.addView(image(R.drawable.detail_play,16).apply{setColorFilter(Color.WHITE);alpha=.9f},FrameLayout.LayoutParams(dp(18),dp(18),Gravity.CENTER))
+    top.addView(thumbFrame)
+    val info=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),0,dp(4),0);layoutParams=LinearLayout.LayoutParams(0,-2,1f);setOnClickListener{selectedEpisode=n;renderTab();loadTmdbDetails()}}
+    info.addView(label("$n. ${ep?.name?.takeIf{it.isNotBlank()} ?: "Episode $n"}",15f,Color.WHITE,true).apply{maxLines=2;ellipsize=TextUtils.TruncateAt.END})
+    val meta=buildList{if((ep?.runtime ?: 0)>0)add("${ep!!.runtime} min");if(!ep?.airDate.isNullOrBlank())add(ep!!.airDate)}.joinToString("  ·  ")
+    if(meta.isNotBlank())info.addView(label(meta,12f,secondary).apply{setPadding(0,dp(6),0,0)})
+    top.addView(info)
+    top.addView(ImageView(this).apply{setImageResource(R.drawable.detail_download);setColorFilter(Color.WHITE);scaleType=ImageView.ScaleType.FIT_CENTER;alpha=.9f;contentDescription="Download episode $n";setOnClickListener{toast("No download source available for episode $n")}},LinearLayout.LayoutParams(dp(24),dp(24)).apply{leftMargin=dp(5);rightMargin=dp(3)})
+    card.addView(top)
+    val synopsis=ep?.overview.orEmpty()
+    if(synopsis.isNotBlank())card.addView(label(synopsis,13f,secondary).apply{typeface=Typeface.create("sans-serif",Typeface.ITALIC);maxLines=2;ellipsize=TextUtils.TruncateAt.END;setPadding(0,dp(9),0,0)})
+    episodeArea.addView(card,LinearLayout.LayoutParams(-1,-2))
    }
-   episodeArea.addView(grid,LinearLayout.LayoutParams(-1,-2))
   }
  }
-
  private fun renderCastTab(){
   val heading=label("Episode $selectedEpisode Cast",20f,Color.WHITE,true)
   episodeArea.addView(heading,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(18);bottomMargin=dp(12)})
