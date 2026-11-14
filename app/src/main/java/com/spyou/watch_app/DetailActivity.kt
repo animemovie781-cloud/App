@@ -10,8 +10,13 @@ import android.view.Gravity
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import coil.load
 import org.json.JSONObject
+import org.json.JSONArray
 
 class DetailActivity : AppCompatActivity() {
  companion object {
