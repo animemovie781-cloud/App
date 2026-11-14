@@ -29,7 +29,9 @@ class DetailMetadataRepository {
         val malId = item.optInt("malId").takeIf { it > 0 } ?: prefixedMalId
         if (anilistId == null && malId == null) return null
         val query = """
-            query (${'                id idMal format status episodes duration season seasonYear averageScore meanScore popularity favourites
+            query {
+              Media(id: ${anilistId ?: "null"}, idMal: ${malId ?: "null"}, type: ANIME) {
+                id idMal format status episodes duration season seasonYear averageScore meanScore popularity favourites
                 title { romaji english native }
                 coverImage { extraLarge large }
                 bannerImage
@@ -58,10 +60,7 @@ class DetailMetadataRepository {
               }
             }
         """.trimIndent()
-        val variables = JSONObject()
-            .put("id", anilistId ?: JSONObject.NULL)
-            .put("idMal", malId ?: JSONObject.NULL)
-        val media = postAniList(query, variables)
+        val media = postAniList(query, JSONObject())
             .optJSONObject("Media") ?: return null
         val title = chooseTitle(media.optJSONObject("title"))
         val date = media.optJSONObject("startDate")
