@@ -22,6 +22,7 @@ class DetailActivity : AppCompatActivity() {
   const val EXTRA_ITEM = "detail_item_json"
   fun intent(c: android.content.Context, item: JSONObject) =
    Intent(c, DetailActivity::class.java).putExtra(EXTRA_ITEM, item.toString())
+  private val aniListDetailCache = java.util.concurrent.ConcurrentHashMap<Int, JSONObject>()
  }
  private lateinit var data: JSONObject
  private lateinit var content: LinearLayout
@@ -450,6 +451,7 @@ class DetailActivity : AppCompatActivity() {
   val kind=data.optString("mediaType")
   val id=data.optString("id").toIntOrNull() ?: return null
   if(kind !in listOf("anime","manga","novel")) return null
+  aniListDetailCache[id]?.let { return JSONObject(it.toString()) }
   val query="query(\$id:Int!){Media(id:\$id){id idMal title{english romaji native} description(asHtml:false) episodes format seasonYear season status averageScore source genres studios{nodes{name}} staff{edges{role node{name{full}}}} characters(page:1,perPage:30,sort:ROLE){edges{role node{id name{full} image{large}} voiceActors(language:JAPANESE){id name{full} image{large}}}} relations{edges{relationType(version:2) node{id type format title{english romaji native} coverImage{large} startDate{year}}}} countryOfOrigin synonyms popularity favourites tags{name rank isMediaSpoiler} startDate{year month day} endDate{year month day}}}"
   val body=JSONObject().put("query",query).put("variables",JSONObject().put("id",id))
   val connection=java.net.URL("https://graphql.anilist.co").openConnection() as java.net.HttpURLConnection
@@ -460,7 +462,9 @@ class DetailActivity : AppCompatActivity() {
   val stream=if(status in 200..299) connection.inputStream else connection.errorStream
   val raw=stream.bufferedReader().use{it.readText()};connection.disconnect()
   if(status !in 200..299) throw IllegalStateException("AniList HTTP $status")
-  return JSONObject(raw).optJSONObject("data")?.optJSONObject("Media")
+  val media = JSONObject(raw).optJSONObject("data")?.optJSONObject("Media")
+  if (media != null) aniListDetailCache[id] = JSONObject(media.toString())
+  return media
  }
 
  private fun applyDetailMetadata(item:JSONObject?){
