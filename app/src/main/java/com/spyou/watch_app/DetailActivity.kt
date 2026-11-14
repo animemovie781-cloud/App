@@ -163,10 +163,18 @@ class DetailActivity : AppCompatActivity() {
   val kind=data.optString("mediaType").trim().lowercase()
   if(kind !in setOf("anime","movie","tv")) return
   lifecycleScope.launch {
-   val result=withContext(kotlinx.coroutines.Dispatchers.IO){runCatching{DetailMetadataRepository().load(data)}.getOrNull()}
-   if(result==null) return@launch
+   val result=withContext(kotlinx.coroutines.Dispatchers.IO){runCatching{DetailMetadataRepository().load(data)}}
+   if(result.isFailure || result.getOrNull()==null) {
+    episodeArea.removeAllViews()
+    episodeArea.addView(label("AniList metadata could not load. Check your connection and tap to retry.",14f,red,true).apply {
+     setPadding(0,dp(18),0,dp(12))
+     setOnClickListener { loadDetailMetadata() }
+    })
+    return@launch
+   }
+   val metadata=result.getOrNull() ?: return@launch
    val keys=listOf("metadataSource","anilistId","malId","title","description","cover","banner","year","format","status","episodes","duration","score","genres","creators","castMembers","relationsList","isAnimeMovie")
-   keys.forEach{key->if(result.has(key)) data.put(key,result.opt(key))}
+   keys.forEach{key->if(metadata.has(key)) data.put(key,metadata.opt(key))}
    titleText.text=title();metaText.text=meta()
    overviewText.text=data.optString("description").ifBlank{"No description available."}
    genresText.text="Genres:  "+data.optString("genres")
