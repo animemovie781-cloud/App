@@ -81,6 +81,9 @@ class MainActivity : AppCompatActivity() {
                 home.heroSection.requestLayout()
             }
             HomeMetadataController(this, home, contentMode).load()
+            home.scheduleCard.setOnClickListener {
+                startActivity(android.content.Intent(this, ScheduleHubActivity::class.java))
+            }
             home.actionSearch.setOnClickListener { startActivity(android.content.Intent(this, SearchActivity::class.java).putExtra("content_mode", contentMode)) }
             home.homeScroll.setOnScrollChangeListener { _, scrollY, oldScrollY, _, _ ->
                 // Match DockScrollCollapse from the Flutter shell: accumulate
