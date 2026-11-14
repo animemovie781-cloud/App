@@ -36,6 +36,11 @@ class DetailActivity : AppCompatActivity() {
  private var tmdbLoading = false
  private var tmdbError: String? = null
  private var tmdbBundle: TmdbDetailBundle? = null
+ private var metaView: TextView? = null
+ private var overviewView: TextView? = null
+ private var genresView: TextView? = null
+ private var creatorsView: TextView? = null
+ private var episodeCount = 0
  private val bg = 0xFF0B0B0F.toInt()
  private val surface = 0xFF16161C.toInt()
  private val panel = 0xFF20212A.toInt()
@@ -43,11 +48,12 @@ class DetailActivity : AppCompatActivity() {
  private val red = 0xFFFF4D57.toInt()
  private fun dp(v:Int)= (v*resources.displayMetrics.density).toInt()
  private fun title()=data.optString("title").takeIf{it.isNotBlank()&&it!="null"}?:"Devils' Crest"
- private fun episodes()=data.optInt("episodes",3).coerceAtLeast(1)
+ private fun episodes()=episodeCount.takeIf{it>0} ?: data.optInt("episodes",0).takeIf{it>0} ?: 0
  private fun meta():String {
   val year=data.optString("year").takeIf{it.isNotBlank()&&it!="null"}?:"2026"
   val status=data.optString("status").takeIf{it.isNotBlank()&&it!="null"}?:"Ongoing"
-  return "$year  ·  ${episodes()} Episodes  ·  $status"
+  val count=episodes().let{if(it>0) "$it Episodes" else "Episodes TBA"}
+  return "$year  ·  $count  ·  $status"
  }
  private fun label(s:String,size:Float=15f,color:Int=Color.WHITE,bold:Boolean=false)=TextView(this).apply{
   text=s;textSize=size;setTextColor(color);includeFontPadding=false
@@ -84,7 +90,8 @@ class DetailActivity : AppCompatActivity() {
    val logo=ImageView(this).apply{scaleType=ImageView.ScaleType.FIT_START;load(logoUrl){allowHardware(false);crossfade(true)}}
    content.addView(logo,LinearLayout.LayoutParams(-1,dp(52)).apply{topMargin=dp(8)})
   }else content.addView(titleView,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8)})
-  content.addView(label(meta(),15f,secondary),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12);bottomMargin=dp(18)})
+  metaView=label(meta(),15f,secondary)
+  content.addView(metaView,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12);bottomMargin=dp(18)})
   content.addView(primaryButton("Play",R.drawable.detail_play,Color.WHITE,Color.BLACK){toast("Install a streaming source to play this title")})
   content.addView(gap(10))
   content.addView(primaryButton("Download E1",R.drawable.detail_download,panel,Color.WHITE){toast("No download source available")})
@@ -92,16 +99,19 @@ class DetailActivity : AppCompatActivity() {
   sourceRow.addView(image(R.drawable.detail_hub,18).apply{alpha=.55f})
   sourceRow.addView(label("No sources installed",13f,0xFF6E6E78.toInt()).apply{setPadding(dp(7),0,0,0)})
   content.addView(sourceRow,LinearLayout.LayoutParams(-1,dp(34)).apply{topMargin=dp(8);bottomMargin=dp(10)})
-  val synopsis=data.optString("description").takeIf{it.isNotBlank()&&it!="null"}?:"Sixth-grader Yuuma Ashihara and his twin sister, Sawa, are playing Actual Magic, a brand-new virtual reality MMORPG, when it suddenly begins fusing with reality."
+  val synopsis=data.optString("description").takeIf{it.isNotBlank()&&it!="null"}?:""
   val overview=label(synopsis,15.5f,secondary).apply{maxLines=3;ellipsize=TextUtils.TruncateAt.END}
+  overviewView=overview
   content.addView(overview)
   content.addView(label("Read more",13f,red,true).apply{
    setPadding(0,dp(8),0,dp(12))
    setOnClickListener{expanded=!expanded;overview.maxLines=if(expanded)Int.MAX_VALUE else 3;overview.ellipsize=if(expanded)null else TextUtils.TruncateAt.END;text=if(expanded)"Read less" else "Read more"}
   })
-  val genres=data.optString("genres").takeIf{it.isNotBlank()&&it!="null"}?:"Action, Adventure, Fantasy"
-  content.addView(label("Genres:  $genres",13f,secondary))
-  content.addView(label("Creators:  "+data.optString("creators","Production I.G"),13f,secondary).apply{setPadding(0,dp(6),0,0)})
+  val genres=data.optString("genres").takeIf{it.isNotBlank()&&it!="null"}?:""
+  genresView=label(if(genres.isBlank()) "" else "Genres:  $genres",13f,secondary)
+  content.addView(genresView)
+  creatorsView=label(data.optString("creators").takeIf{it.isNotBlank()&&it!="null"}?.let{"Creators:  $it"}.orEmpty(),13f,secondary).apply{setPadding(0,dp(6),0,0)}
+  content.addView(creatorsView)
   // Four icon actions use the exact PNG exports from the supplied kit.
   val actions=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;setPadding(0,dp(20),0,dp(12))}
   val actionCells= mutableListOf<ImageView>()
@@ -164,6 +174,10 @@ class DetailActivity : AppCompatActivity() {
   more.addView(image(R.drawable.detail_more,20),FrameLayout.LayoutParams(dp(20),dp(20),Gravity.CENTER))
   heading.addView(more,LinearLayout.LayoutParams(dp(36),dp(36)))
   episodeArea.addView(heading,LinearLayout.LayoutParams(-1,dp(54)).apply{topMargin=dp(8);bottomMargin=dp(10)})
+  if(episodes()<=0){
+   episodeArea.addView(label("Episode information has not been announced yet.",14f,secondary).apply{setPadding(0,dp(8),0,dp(12))})
+   return
+  }
   if(listMode){
    for(n in episodes() downTo 1){
     val row=TextView(this).apply{
@@ -257,14 +271,59 @@ class DetailActivity : AppCompatActivity() {
   tmdbLoading=true;tmdbError=null;renderTab()
   lifecycleScope.launch{
    try{
+    val detailData=withContext(Dispatchers.IO){loadAniListDetailIfNeeded()}
+    applyDetailMetadata(detailData)
     val result=withContext(Dispatchers.IO){
-     TmdbDetailRepository().load(title(),data.optString("mediaType"),data.optString("id"),selectedSeason,selectedEpisode)
+     val kind=data.optString("mediaType")
+     if(kind=="anime" || kind=="manga" || kind=="novel" || kind.isBlank()) TmdbDetailRepository().load(title(),"tv","",selectedSeason,selectedEpisode)
+     else TmdbDetailRepository().load(title(),kind,data.optString("id"),selectedSeason,selectedEpisode)
     }
     tmdbBundle=result
    }catch(error:Exception){tmdbError=error.message ?: "TMDB request failed"}
    tmdbLoading=false
    renderTab()
   }
+ }
+
+ private fun loadAniListDetailIfNeeded():JSONObject?{
+  val kind=data.optString("mediaType")
+  val id=data.optString("id").toIntOrNull() ?: return null
+  if(kind !in listOf("anime","manga","novel")) return null
+  val query="query($id:Int!){Media(id:$id){id title{english romaji native} description(asHtml:false) episodes seasonYear status genres studios{nodes{name}} staff{edges{role node{name{full}}}}}}"
+  val body=JSONObject().put("query",query).put("variables",JSONObject().put("id",id))
+  val connection=java.net.URL("https://graphql.anilist.co").openConnection() as java.net.HttpURLConnection
+  connection.requestMethod="POST";connection.connectTimeout=7000;connection.readTimeout=10000;connection.doOutput=true
+  connection.setRequestProperty("Content-Type","application/json");connection.setRequestProperty("Accept","application/json")
+  connection.outputStream.use{it.write(body.toString().toByteArray(Charsets.UTF_8))}
+  val status=connection.responseCode
+  val stream=if(status in 200..299) connection.inputStream else connection.errorStream
+  val raw=stream.bufferedReader().use{it.readText()};connection.disconnect()
+  if(status !in 200..299) throw IllegalStateException("AniList HTTP $status")
+  return JSONObject(raw).optJSONObject("data")?.optJSONObject("Media")
+ }
+
+ private fun applyDetailMetadata(item:JSONObject?){
+  if(item==null) return
+  val names=item.optJSONObject("title")
+  val correctTitle=listOf("english","romaji","native").map{names?.optString(it).orEmpty()}.firstOrNull{it.isNotBlank()&&it!="null"}
+  if(!correctTitle.isNullOrBlank()) data.put("title",correctTitle)
+  val description=item.optString("description").takeIf{it.isNotBlank()&&it!="null"}.orEmpty()
+  val genres=item.optJSONArray("genres")?.let{arr->(0 until arr.length()).map{arr.optString(it)}.filter{it.isNotBlank()}.joinToString(" · ")}.orEmpty()
+  val studios=item.optJSONObject("studios")?.optJSONArray("nodes")?.let{arr->(0 until arr.length()).mapNotNull{arr.optJSONObject(it)?.optString("name")?.takeIf{n->n.isNotBlank()}}.joinToString(" · ")}.orEmpty()
+  val staff=item.optJSONObject("staff")?.optJSONArray("edges")
+  val creators=staff?.let{arr->(0 until arr.length()).mapNotNull{index->
+   val edge=arr.optJSONObject(index)?:return@mapNotNull null
+   val role=edge.optString("role").lowercase()
+   if(role.contains("director")||role.contains("creator")||role.contains("series composition")) edge.optJSONObject("node")?.optJSONObject("name")?.optString("full")?.takeIf{n->n.isNotBlank()} else null
+  }.distinct().take(5).joinToString(" · ")}.orEmpty()
+  episodeCount=item.optInt("episodes",0).takeIf{it>0}?:0
+  if(item.optInt("seasonYear")>0) data.put("year",item.optInt("seasonYear").toString())
+  if(item.optString("status").isNotBlank()) data.put("status",item.optString("status"))
+  data.put("description",description).put("genres",genres).put("creators",creators)
+  overviewView?.text=description
+  genresView?.text=if(genres.isBlank()) "" else "Genres:  $genres"
+  creatorsView?.text=if(creators.isBlank()) if(studios.isBlank()) "" else "Studios:  $studios" else "Creators:  $creators"
+  metaView?.text=meta()
  }
 
 }
