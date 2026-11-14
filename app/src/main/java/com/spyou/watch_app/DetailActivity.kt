@@ -173,7 +173,9 @@ class DetailActivity : AppCompatActivity() {
    creatorsText.text="Creators:  "+data.optString("creators")
    if (isMovie()) selectedTab = "Cast"
    buildTabs()
-   (downloadButton.getChildAt(1) as? TextView)?.text = if (isMovie()) "Download" else "Download E1"
+   (downloadButton as? android.view.ViewGroup)?.getChildAt(1)?.let { child ->
+    (child as? TextView)?.text = if (isMovie()) "Download" else "Download E1"
+   }
    if (!isMovie()) {
     episodeMetadata = withContext(Dispatchers.IO) {
      runCatching {
