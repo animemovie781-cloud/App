@@ -29,6 +29,7 @@ class DetailActivity : AppCompatActivity() {
  private lateinit var tabsContainer: LinearLayout
  private var selectedTab = "Episodes"
  private var aniListFormat = ""
+ private var downloadButton: View? = null
  private fun isMovie(): Boolean = data.optString("mediaType") == "movie" || data.optString("format").equals("MOVIE", true) || aniListFormat.equals("MOVIE", true)
  private var saved = false
  private var notified = false
@@ -106,7 +107,8 @@ class DetailActivity : AppCompatActivity() {
   content.addView(metaView,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12);bottomMargin=dp(18)})
   content.addView(primaryButton("Play",R.drawable.detail_play,Color.WHITE,Color.BLACK){toast("Install a streaming source to play this title")})
   content.addView(gap(10))
-  content.addView(primaryButton("Download E1",R.drawable.detail_download,panel,Color.WHITE){toast("No download source available")})
+  downloadButton=primaryButton(if(isMovie()) "Download" else "Download E1",R.drawable.detail_download,panel,Color.WHITE){toast("No download source available")}
+  content.addView(downloadButton)
   val sourceRow=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
   sourceRow.addView(image(R.drawable.detail_hub,18).apply{alpha=.55f})
   sourceRow.addView(label("No sources installed",13f,0xFF6E6E78.toInt()).apply{setPadding(dp(7),0,0,0)})
@@ -381,7 +383,11 @@ class DetailActivity : AppCompatActivity() {
   aniListMalId=item.optInt("idMal",0).takeIf{it>0}
   aniListFormat=item.optString("format")
   aniListDetailsLoaded=true
-  if(isMovie()) { selectedTab="Cast"; rebuildTabs() }
+  if(isMovie()) {
+   selectedTab="Cast"
+   rebuildTabs()
+   (downloadButton as? LinearLayout)?.let { row -> (row.getChildAt(1) as? TextView)?.text = "Download" }
+  }
   if(item.optInt("seasonYear")>0) data.put("year",item.optInt("seasonYear").toString())
   if(item.optString("status").isNotBlank()) data.put("status",item.optString("status"))
   data.put("description",description).put("genres",genres).put("creators",creators)
