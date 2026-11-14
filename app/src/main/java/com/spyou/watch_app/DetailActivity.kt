@@ -160,7 +160,7 @@ class DetailActivity : AppCompatActivity() {
   return row.apply{layoutParams=LinearLayout.LayoutParams(-1,dp(52))}
  }
  private fun loadDetailMetadata(){
-  val kind=data.optString("mediaType")
+  val kind=data.optString("mediaType").trim().lowercase()
   if(kind !in setOf("anime","movie","tv")) return
   lifecycleScope.launch {
    val result=withContext(kotlinx.coroutines.Dispatchers.IO){runCatching{DetailMetadataRepository().load(data)}.getOrNull()}
@@ -180,7 +180,7 @@ class DetailActivity : AppCompatActivity() {
     episodeMetadata = withContext(Dispatchers.IO) {
      runCatching {
       val service = EpisodeMetadataService(this@DetailActivity)
-      when (data.optString("mediaType")) {
+      when (data.optString("mediaType").trim().lowercase()) {
        "anime" -> service.loadAnime(data.optInt("malId"))
        "tv" -> service.loadTmdbTv(data.optInt("id"), data.optInt("episodes"))
        else -> JSONArray()
