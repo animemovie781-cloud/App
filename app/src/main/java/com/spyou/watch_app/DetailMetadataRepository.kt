@@ -162,36 +162,7 @@ class DetailMetadataRepository {
     }
 
     private fun postAniList(query: String, variables: JSONObject): JSONObject {
-        val conn = URL("https://graphql.anilist.co").openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
-        conn.connectTimeout = 8000
-        conn.readTimeout = 12000
-        conn.doOutput = true
-        conn.setRequestProperty("Content-Type", "application/json")
-        conn.setRequestProperty("Accept", "application/json")
-        conn.setRequestProperty("User-Agent", "ZangetsuAndroid/1.0")
-        conn.setRequestProperty("Origin", "https://anilist.co")
-        conn.setRequestProperty("Referer", "https://anilist.co/")
-        conn.outputStream.use { it.write(JSONObject().put("query", query).put("variables", variables).toString().toByteArray(Charsets.UTF_8)) }
-        val status = conn.responseCode
-        val stream = if (status in 200..299) conn.inputStream else conn.errorStream
-        val body = try {
-            stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-        } finally {
-            conn.disconnect()
-        }
-        val envelope = runCatching { JSONObject(body) }.getOrElse {
-            throw IllegalStateException("AniList returned an invalid response (HTTP $status)", it)
-        }
-        if (status !in 200..299) {
-            val message = envelope.optJSONArray("errors")?.optJSONObject(0)?.optString("message")
-            throw IllegalStateException(message?.takeIf { it.isNotBlank() } ?: "AniList HTTP $status")
-        }
-        val errors = envelope.optJSONArray("errors")
-        if (errors != null && errors.length() > 0 && !envelope.has("data")) {
-            throw IllegalStateException(errors.optJSONObject(0)?.optString("message") ?: "AniList query failed")
-        }
-        return envelope.optJSONObject("data") ?: JSONObject()
+        return AniListGraphQL.query(query, variables)
     }
 
     private fun tmdb(path: String): JSONObject {
