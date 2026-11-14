@@ -2,97 +2,57 @@ package com.kanha.dev
 
 import org.json.JSONArray
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 import java.net.URLEncoder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 
-/**
- * TMDB detail data adapter. Supports TMDB movie/TV ids directly and resolves
- * AniList-backed anime titles through TMDB TV search when no TMDB id is supplied.
- */
 internal object TmdbConfig {
-    // Same v3 key already used by the app's HomeMetadataController.
     const val API_KEY = "fab792d6c5936a7332045ca4565c7353"
 }
-
-internal data class TmdbPerson(
-    val id: Int,
-    val name: String,
-    val character: String,
-    val profileUrl: String?
-)
-
-internal data class TmdbRelated(
-    val id: Int,
-    val title: String,
-    val overview: String,
-    val posterUrl: String?,
-    val mediaType: String
-)
-
+internal data class TmdbPerson(val id: Int, val name: String, val character: String, val profileUrl: String?)
+internal data class TmdbRelated(val id: Int, val title: String, val overview: String, val posterUrl: String?, val mediaType: String)
 internal data class TmdbEpisode(
-    val number: Int,
-    val name: String,
-    val overview: String,
-    val stillUrl: String?,
-    val airDate: String,
-    val runtime: Int,
-    val rating: Double
+    val number: Int, val name: String, val overview: String, val stillUrl: String?,
+    val airDate: String, val runtime: Int, val rating: Double
 )
-
 internal data class TmdbDetailBundle(
-    val mediaType: String,
-    val tmdbId: Int,
-    val cast: List<TmdbPerson>,
-    val relations: List<TmdbRelated>,
-    val details: JSONObject,
-    val episodes: List<TmdbEpisode>
+    val mediaType: String, val tmdbId: Int, val cast: List<TmdbPerson>,
+    val relations: List<TmdbRelated>, val details: JSONObject, val episodes: List<TmdbEpisode>
 )
 
 internal class TmdbDetailRepository {
     private val imageBase = "https://image.tmdb.org/t/p/w500"
 
-    fun load(title: String, sourceType: String, sourceId: String, season: Int, episode: Int): TmdbDetailBundle {
+    /** Resolve once, then fetch details, credits and season data concurrently. */
+    suspend fun load(
+        title: String, sourceType: String, sourceId: String,
+        season: Int, episode: Int, includeExtras: Boolean = true
+    ): TmdbDetailBundle = coroutineScope {
         val resolved = resolve(title, sourceType, sourceId)
             ?: throw IllegalStateException("TMDB could not find this title. Check the title or provide a TMDB ID.")
         val (type, id) = resolved
-        val details = request("/$type/$id")
-        val creditsPath = if (type == "tv") {
-            "/tv/$id/season/$season/episode/$episode/credits"
-        } else {
-            "/movie/$id/credits"
-        }
-        // Keep episode cast scoped to the selected episode; do not silently replace it with series-wide cast.
-        val credits = runCatching { request(creditsPath) }
-            .getOrElse { JSONObject() }
-        val cast = parseCast(credits.optJSONArray("cast"))
-        val recommendations = runCatching { request("/$type/$id/recommendations") }.getOrDefault(JSONObject())
-        val similar = runCatching { request("/$type/$id/similar") }.getOrDefault(JSONObject())
-        val relations = mergeResults(recommendations.optJSONArray("results"), similar.optJSONArray("results"), type)
-        val seasonData = if (type == "tv") {
-            val available = details.optJSONArray("seasons")
-            val seasonEntry = available?.let { array ->
-                (0 until array.length()).mapNotNull { array.optJSONObject(it) }
-                    .firstOrNull { it.optInt("season_number", -1) == season && it.optInt("episode_count", 0) > 0 }
-            }
-            if (seasonEntry == null) {
-                val availableNumbers = available?.let { array ->
-                    (0 until array.length()).mapNotNull { array.optJSONObject(it)?.optInt("season_number") }
-                        .filter { it > 0 }.joinToString(", ")
-                }.orEmpty()
-                throw IllegalStateException("TMDB does not have Season $season episode data for this title. Available seasons: ${availableNumbers.ifBlank { "not listed" }}.")
-            }
+        val creditsPath = if (type == "tv") "/tv/$id/season/$season/episode/$episode/credits" else "/movie/$id/credits"
+        val detailsDeferred = if (includeExtras) async(Dispatchers.IO) {
+            request("/$type/$id?append_to_response=recommendations,similar")
+        } else null
+        val creditsDeferred = if (includeExtras) async(Dispatchers.IO) {
+            runCatching { request(creditsPath) }.getOrElse { JSONObject() }
+        } else null
+        val seasonDeferred = if (type == "tv") async(Dispatchers.IO) {
             request("/tv/$id/season/$season")
-        } else JSONObject()
-        // Movies have no season/episode endpoint. Keep their bundle valid so
-        // Cast, Relations and Details tabs can still render without an Episodes tab.
-        val episodeArray = if (type == "tv") {
-            seasonData.optJSONArray("episodes")
-                ?: throw IllegalStateException("TMDB returned no episode list for Season $season.")
-        } else JSONArray()
-        if (type == "tv" && episodeArray.length() == 0) {
+        } else null
+
+        val details = detailsDeferred?.await() ?: JSONObject()
+        val cast = parseCast(creditsDeferred?.await()?.optJSONArray("cast"))
+        val relations = mergeResults(
+            details.optJSONObject("recommendations")?.optJSONArray("results"),
+            details.optJSONObject("similar")?.optJSONArray("results"), type
+        )
+        val episodeArray = seasonDeferred?.await()?.optJSONArray("episodes") ?: JSONArray()
+        if (type == "tv" && episodeArray.length() == 0)
             throw IllegalStateException("TMDB Season $season currently has no episode records.")
-        }
         val episodeItems = (0 until episodeArray.length()).mapNotNull { index ->
             val item = episodeArray.optJSONObject(index) ?: return@mapNotNull null
             val number = item.optInt("episode_number", 0)
@@ -100,32 +60,33 @@ internal class TmdbDetailRepository {
             val still = item.optString("still_path").takeIf { it.isNotBlank() && it != "null" }
             TmdbEpisode(number, item.optString("name").ifBlank { "Episode $number" },
                 item.optString("overview"), still?.let { imageBase + it },
-                item.optString("air_date"), item.optInt("runtime"),
-                item.optDouble("vote_average"))
+                item.optString("air_date"), item.optInt("runtime"), item.optDouble("vote_average"))
         }
-        return TmdbDetailBundle(type, id, cast, relations, details, episodeItems)
+        TmdbDetailBundle(type, id, cast, relations, details, episodeItems)
     }
 
-    private fun resolve(title: String, sourceType: String, sourceId: String): Pair<String, Int>? {
+    suspend fun episodeCast(tmdbId: Int, season: Int, episode: Int): List<TmdbPerson> =
+        runCatching { parseCast(request("/tv/$tmdbId/season/$season/episode/$episode/credits").optJSONArray("cast")) }
+            .getOrDefault(emptyList())
+
+    private suspend fun resolve(title: String, sourceType: String, sourceId: String): Pair<String, Int>? {
         val normalizedType = sourceType.lowercase()
         val explicitId = sourceId.toIntOrNull()
-        if (explicitId != null && explicitId > 0 && normalizedType in listOf("tv", "movie")) {
+        if (explicitId != null && explicitId > 0 && normalizedType in listOf("tv", "movie"))
             return normalizedType to explicitId
-        }
-        // Catalogue titles can append a season suffix; TMDB search needs the base series title.
+
         val baseTitle = title
             .replace(Regex("(?i)\\s+(?:season|s)\\s*[-:#]?\\s*\\d+.*$"), "")
             .replace(Regex("(?i)\\s+\\d+(?:st|nd|rd|th)\\s+season.*$"), "")
-            .trim()
-            .ifBlank { title }
+            .trim().ifBlank { title }
         val query = URLEncoder.encode(baseTitle, "UTF-8")
         val searchType = if (normalizedType == "movie") "movie" else "tv"
         val results = request("/search/$searchType?query=$query").optJSONArray("results") ?: JSONArray()
         val wanted = normalize(baseTitle)
         var best: JSONObject? = null
         var bestScore = -1
-        for (i in 0 until results.length()) {
-            val item = results.optJSONObject(i) ?: continue
+        for (index in 0 until results.length()) {
+            val item = results.optJSONObject(index) ?: continue
             val candidate = item.optString(if (searchType == "movie") "title" else "name")
             val original = item.optString(if (searchType == "movie") "original_title" else "original_name")
             val score = when {
@@ -160,8 +121,8 @@ internal class TmdbDetailRepository {
         val output = mutableListOf<TmdbRelated>()
         listOf(first, second).forEach { array ->
             if (array == null) return@forEach
-            for (i in 0 until array.length()) {
-                val item = array.optJSONObject(i) ?: continue
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
                 val id = item.optInt("id", -1)
                 if (id <= 0 || !seen.add(id)) continue
                 val title = item.optString("name").takeIf { it.isNotBlank() }
@@ -173,25 +134,15 @@ internal class TmdbDetailRepository {
         return output.take(20)
     }
 
-    private fun request(path: String): JSONObject {
-        val url = URL("https://api.themoviedb.org/3$path" +
+    private suspend fun request(path: String): JSONObject {
+        val url = "https://api.themoviedb.org/3$path" +
             (if (path.contains("?")) "&" else "?") +
-            "api_key=${TmdbConfig.API_KEY}&language=en-US")
-        val connection = url.openConnection() as HttpURLConnection
-        connection.connectTimeout = 7000
-        connection.readTimeout = 10000
-        connection.setRequestProperty("Accept", "application/json")
-        try {
-            val status = connection.responseCode
-            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val body = stream.bufferedReader().use { it.readText() }
-            if (status !in 200..299) {
-                val message = runCatching { JSONObject(body).optString("status_message") }.getOrNull()
-                throw IllegalStateException(message?.takeIf { it.isNotBlank() } ?: "TMDB HTTP $status")
-            }
-            return JSONObject(body)
-        } finally {
-            connection.disconnect()
+            "api_key=${TmdbConfig.API_KEY}&language=en-US"
+        val (status, body) = Net.get(url)
+        if (status !in 200..299) {
+            val message = runCatching { JSONObject(body).optString("status_message") }.getOrNull()
+            throw IllegalStateException(message?.takeIf { it.isNotBlank() } ?: "TMDB HTTP $status")
         }
+        return JSONObject(body)
     }
 }
