@@ -174,7 +174,7 @@ class DetailActivity : AppCompatActivity() {
    if (isMovie()) selectedTab = "Cast"
    buildTabs()
    (downloadButton.getChildAt(1) as? TextView)?.text = if (isMovie()) "Download" else "Download E1"
-   if (!isAnimeMovie()) {
+   if (!isMovie()) {
     episodeMetadata = withContext(Dispatchers.IO) {
      runCatching {
       val service = EpisodeMetadataService(this@DetailActivity)
