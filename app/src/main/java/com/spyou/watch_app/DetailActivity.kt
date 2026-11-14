@@ -404,8 +404,7 @@ class DetailActivity : AppCompatActivity() {
   tmdbError=null
   renderTab()
   lifecycleScope.launch {
-   val isAniListTitle = data.optString("mediaType") in listOf("anime","manga","novel") ||
-       (data.optString("mediaType").isBlank() && data.optString("id").toIntOrNull()!=null)
+   val isAniListTitle = data.optString("mediaType") in listOf("anime","manga","novel")
    try {
     // AniList is the primary source for anime. Render its metadata immediately;
     // do not wait for the slower TMDB multi-endpoint lookup before showing tabs.
