@@ -44,7 +44,8 @@ class HomeMetadataController(
         val year: String,
         val genres: String,
         val mediaType: String,
-        val episodes: Int = 0
+        val episodes: Int = 0,
+        val format: String = ""
     )
 
     private val isVideo = mode == "Movie / TV"
@@ -144,7 +145,7 @@ class HomeMetadataController(
         val array = org.json.JSONArray()
         items.forEach { item ->
             array.put(JSONObject().put("id", item.id).put("title", item.title).put("cover", item.cover)
-                .put("score", item.score).put("year", item.year).put("mediaType", item.mediaType))
+                .put("score", item.score).put("year", item.year).put("mediaType", item.mediaType).put("format", item.format))
         }
         binding.root.context.startActivity(android.content.Intent(binding.root.context, SeeAllActivity::class.java)
             .putExtra(SeeAllActivity.EXTRA_TITLE, title).putExtra(SeeAllActivity.EXTRA_ITEMS, array.toString()))
@@ -373,7 +374,7 @@ class HomeMetadataController(
                     val title = m.optString("title").cleanValue()
                     val cover = m.optString("cover").cleanValue()
                     if (!title.isMeaningful() || cover.isBlank()) return@mapNotNull null
-                    Media(m.optString("id"), title, cover, m.optString("banner").takeIf { it.isMeaningful() }, m.optString("score").cleanValue(), m.optString("description").cleanValue(), m.optString("year").cleanValue(), m.optString("genres").cleanValue(), m.optString("mediaType").cleanValue(), m.optInt("episodes"))
+                    Media(m.optString("id"), title, cover, m.optString("banner").takeIf { it.isMeaningful() }, m.optString("score").cleanValue(), m.optString("description").cleanValue(), m.optString("year").cleanValue(), m.optString("genres").cleanValue(), m.optString("mediaType").cleanValue(), m.optInt("episodes"), m.optString("format").cleanValue())
                 }
                 if (media.isEmpty()) null else row.optString("title") to media
             }
@@ -386,7 +387,7 @@ class HomeMetadataController(
             rows.forEach { (title, items) ->
                 val media = org.json.JSONArray()
                 items.forEach { m ->
-                    media.put(JSONObject().put("id", m.id).put("title", m.title).put("cover", m.cover).put("banner", m.banner).put("score", m.score).put("description", m.description).put("year", m.year).put("genres", m.genres).put("mediaType", m.mediaType).put("episodes", m.episodes))
+                    media.put(JSONObject().put("id", m.id).put("title", m.title).put("cover", m.cover).put("banner", m.banner).put("score", m.score).put("description", m.description).put("year", m.year).put("genres", m.genres).put("mediaType", m.mediaType).put("episodes", m.episodes).put("format", m.format))
                 }
                 array.put(JSONObject().put("title", title).put("items", media))
             }
@@ -462,7 +463,7 @@ class HomeMetadataController(
         }
     }
     private fun openDetail(item: Media) {
-        val payload = JSONObject().put("id",item.id).put("title",item.title).put("cover",item.cover).put("banner",item.banner).put("score",item.score).put("description",item.description).put("year",item.year).put("genres",item.genres).put("mediaType",item.mediaType).put("episodes",item.episodes)
+        val payload = JSONObject().put("id",item.id).put("title",item.title).put("cover",item.cover).put("banner",item.banner).put("score",item.score).put("description",item.description).put("year",item.year).put("genres",item.genres) .put("mediaType",item.mediaType).put("episodes",item.episodes).put("format",item.format)
         binding.root.context.startActivity(DetailActivity.intent(binding.root.context,payload))
     }
     private inner class HeroAdapter(private val items: List<Media>) :
@@ -523,7 +524,7 @@ class HomeMetadataController(
             "Top rated" to "sort:SCORE_DESC"
         )
         val aliases = rows.mapIndexed { i, row ->
-            "r$i: Page(perPage:30){ media(type:$type$adult$format,${row.second}){ id title{romaji english native} coverImage{large} bannerImage averageScore genres seasonYear chapters episodes status } }"
+            "r$i: Page(perPage:30){ media(type:$type$adult$format,${row.second}){ id title{romaji english native} coverImage{large} bannerImage averageScore genres seasonYear chapters episodes status format } }"
         }.joinToString(" ")
         val data = aniListRequest("query{ $aliases }")
         return rows.mapIndexedNotNull { i, row ->
@@ -550,7 +551,7 @@ class HomeMetadataController(
         val genreText = genres?.let { a -> (0 until a.length()).map { a.optString(it) }.joinToString(" · ") }.orEmpty()
         return Media(o.optString("id"), title, cover, o.optString("bannerImage").takeIf { it.isNotBlank() && it != "null" },
             o.optInt("averageScore").takeIf { it > 0 }?.let { "%.1f".format(it / 10.0) }.orEmpty(),
-            "", o.optInt("seasonYear").takeIf { it > 0 }?.toString().orEmpty(), genreText, contentKind, o.optInt("episodes"))
+            "", o.optInt("seasonYear").takeIf { it > 0 }?.toString().orEmpty(), genreText, contentKind, o.optInt("episodes"), o.optString("format"))
     }
 
     private suspend fun loadTmdbRows(): List<Pair<String, List<Media>>> = coroutineScope {
