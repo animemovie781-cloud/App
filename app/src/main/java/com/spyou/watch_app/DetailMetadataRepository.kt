@@ -13,19 +13,24 @@ import java.net.URLEncoder
  */
 class DetailMetadataRepository {
     fun load(item: JSONObject): JSONObject? {
-        val kind = item.optString("mediaType").lowercase()
+        val kind = item.optString("mediaType").trim().lowercase()
         return when (kind) {
-            "anime" -> loadAniList(item.optString("id"))
+            "anime" -> loadAniList(item)
             "movie", "tv" -> loadTmdb(kind, item.optString("id"))
             else -> null
         }
     }
 
-    private fun loadAniList(rawId: String): JSONObject? {
-        val id = rawId.toIntOrNull() ?: return null
+    private fun loadAniList(item: JSONObject): JSONObject? {
+        val rawId = item.optString("id").trim()
+        val prefixedMalId = rawId.takeIf { it.startsWith("mal:", true) }
+            ?.substringAfter(":")?.toIntOrNull()
+        val anilistId = if (prefixedMalId != null) null else rawId.toIntOrNull()
+        val malId = item.optInt("malId").takeIf { it > 0 } ?: prefixedMalId
+        if (anilistId == null && malId == null) return null
         val query = """
-            query ($id: Int) {
-              Media(id: $id, type: ANIME) {
+            query ($id: Int, $idMal: Int) {
+              Media(id: $id, idMal: $idMal, type: ANIME) {
                 id idMal format status episodes duration season seasonYear averageScore meanScore popularity favourites
                 title { romaji english native }
                 coverImage { extraLarge large }
@@ -55,7 +60,10 @@ class DetailMetadataRepository {
               }
             }
         """.trimIndent()
-        val media = postAniList(query, JSONObject().put("id", id))
+        val variables = JSONObject()
+            .put("id", anilistId ?: JSONObject.NULL)
+            .put("idMal", malId ?: JSONObject.NULL)
+        val media = postAniList(query, variables)
             .optJSONObject("Media") ?: return null
         val title = chooseTitle(media.optJSONObject("title"))
         val date = media.optJSONObject("startDate")
@@ -104,7 +112,7 @@ class DetailMetadataRepository {
         }
         return JSONObject()
             .put("metadataSource", "AniList")
-            .put("anilistId", id)
+            .put("anilistId", media.optInt("id"))
             .put("malId", media.optInt("idMal"))
             .put("title", title)
             .put("description", cleanDescription(media.optString("description")))
