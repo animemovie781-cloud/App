@@ -28,6 +28,7 @@ class DetailActivity : AppCompatActivity() {
  private lateinit var content: LinearLayout
  private lateinit var episodeArea: LinearLayout
  private var selectedTab = "Episodes"
+ private lateinit var downloadButton: View
  private var saved = false
  private var notified = false
  private var expanded = false
@@ -48,13 +49,24 @@ class DetailActivity : AppCompatActivity() {
  private fun dp(v:Int)= (v*resources.displayMetrics.density).toInt()
  private fun title()=data.optString("title").takeIf{it.isNotBlank()&&it!="null"}?:"Devils' Crest"
  private fun episodes()=data.optInt("episodes",3).coerceAtLeast(1)
- private fun isAnimeMovie() = data.optBoolean("isAnimeMovie") || (data.optString("mediaType")=="anime" && data.optString("format")=="MOVIE")
+ private fun isMovie(): Boolean {
+  val mediaType = data.optString("mediaType").trim().lowercase()
+  val formats = listOf("format", "mediaFormat", "media_format", "type")
+   .map { data.optString(it).trim().uppercase() }
+  return mediaType in setOf("movie", "film") ||
+   formats.any { it in setOf("MOVIE", "FILM", "ANIME_MOVIE") } ||
+   data.optBoolean("isMovie") || data.optBoolean("isAnimeMovie")
+ }
+ private fun isAnimeMovie() = isMovie() &&
+  (data.optString("mediaType").equals("anime", true) ||
+   data.optString("metadataSource").equals("AniList", true) ||
+   data.optBoolean("isAnimeMovie"))
  private fun meta():String {
   val year=data.optString("year").takeIf{it.isNotBlank()&&it!="null"}?:""
   val status=data.optString("status").takeIf{it.isNotBlank()&&it!="null"}?:""
   val parts= mutableListOf<String>()
   if(year.isNotBlank()) parts.add(year)
-  if(isAnimeMovie() || data.optString("mediaType")=="movie") parts.add("Movie") else if(episodes()>0) parts.add("${episodes()} Episodes")
+  if(isMovie()) parts.add("Movie") else if(episodes()>0) parts.add("${episodes()} Episodes")
   if(status.isNotBlank()) parts.add(status.replace("_"," ").lowercase().replaceFirstChar{it.uppercase()})
   return parts.joinToString("  ·  ")
  }
@@ -73,6 +85,7 @@ class DetailActivity : AppCompatActivity() {
   super.onCreate(state)
   window.statusBarColor=bg;window.navigationBarColor=bg
   data=runCatching{JSONObject(intent.getStringExtra(EXTRA_ITEM).orEmpty())}.getOrElse{JSONObject()}
+  selectedTab = if (isMovie()) "Cast" else "Episodes"
   val scroll=ScrollView(this).apply{setBackgroundColor(bg);isFillViewport=true;clipToPadding=false}
   content=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(16),0,dp(16),dp(28))}
   // Expanded 320dp artwork with bottom scrim and floating back control.
@@ -97,7 +110,8 @@ class DetailActivity : AppCompatActivity() {
   content.addView(metaText,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12);bottomMargin=dp(18)})
   content.addView(primaryButton("Play",R.drawable.detail_play,Color.WHITE,Color.BLACK){toast("Install a streaming source to play this title")})
   content.addView(gap(10))
-  content.addView(primaryButton("Download E1",R.drawable.detail_download,panel,Color.WHITE){toast("No download source available")})
+  downloadButton = primaryButton(if (isMovie()) "Download" else "Download E1",R.drawable.detail_download,panel,Color.WHITE){toast("No download source available")}
+  content.addView(downloadButton)
   val sourceRow=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
   sourceRow.addView(image(R.drawable.detail_hub,18).apply{alpha=.55f})
   sourceRow.addView(label("No sources installed",13f,0xFF6E6E78.toInt()).apply{setPadding(dp(7),0,0,0)})
@@ -133,13 +147,7 @@ class DetailActivity : AppCompatActivity() {
   }
   content.addView(actions)
   tabBar=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
-  listOf("Episodes","Cast","Relations","Details").forEach{tab->
-   val cell=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_HORIZONTAL;layoutParams=LinearLayout.LayoutParams(-2,-2).apply{rightMargin=dp(22)}}
-   cell.addView(label(tab,15f,if(tab==selectedTab)red else secondary,tab==selectedTab).apply{setPadding(0,dp(10),0,dp(10));setOnClickListener{selectedTab=tab;refreshTabs(tabBar);renderTab()}})
-   val underline=View(this).apply{tag=tab;background=shape(red,2f);visibility=if(tab==selectedTab)View.VISIBLE else View.INVISIBLE}
-   cell.addView(underline,LinearLayout.LayoutParams(dp(if(tab=="Episodes")58 else tab.length*8),dp(3)))
-   tabBar.addView(cell)
-  }
+  buildTabs()
   content.addView(tabBar)
   episodeArea=LinearLayout(this).apply{orientation=1}
   content.addView(episodeArea)
@@ -163,11 +171,9 @@ class DetailActivity : AppCompatActivity() {
    overviewText.text=data.optString("description").ifBlank{"No description available."}
    genresText.text="Genres:  "+data.optString("genres")
    creatorsText.text="Creators:  "+data.optString("creators")
-   if(isAnimeMovie()){
-    selectedTab="Cast"
-    if(tabBar.childCount>0) tabBar.getChildAt(0).visibility=View.GONE
-    refreshTabs(tabBar)
-   }
+   if (isMovie()) selectedTab = "Cast"
+   buildTabs()
+   (downloadButton.getChildAt(1) as? TextView)?.text = if (isMovie()) "Download" else "Download E1"
    if (!isAnimeMovie()) {
     episodeMetadata = withContext(Dispatchers.IO) {
      runCatching {
@@ -183,6 +189,19 @@ class DetailActivity : AppCompatActivity() {
    renderTab()
   }
  }
+ private fun buildTabs(){
+  tabBar.removeAllViews()
+  val tabs = if (isMovie()) listOf("Cast","Relations","Details")
+   else listOf("Episodes","Cast","Relations","Details")
+  if (selectedTab !in tabs) selectedTab = if (isMovie()) "Cast" else "Episodes"
+  tabs.forEach{tab->
+   val cell=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_HORIZONTAL;layoutParams=LinearLayout.LayoutParams(-2,-2).apply{rightMargin=dp(22)}}
+   cell.addView(label(tab,15f,if(tab==selectedTab)red else secondary,tab==selectedTab).apply{setPadding(0,dp(10),0,dp(10));setOnClickListener{selectedTab=tab;refreshTabs(tabBar);renderTab()}})
+   val underline=View(this).apply{tag=tab;background=shape(red,2f);visibility=if(tab==selectedTab)View.VISIBLE else View.INVISIBLE}
+   cell.addView(underline,LinearLayout.LayoutParams(dp(tab.length*8),dp(3)))
+   tabBar.addView(cell)
+  }
+ }
  private fun refreshTabs(tabs:LinearLayout){
   for(i in 0 until tabs.childCount){val cell=tabs.getChildAt(i) as LinearLayout;val name=(cell.getChildAt(0) as TextView).text.toString();val active=name==selectedTab
    (cell.getChildAt(0) as TextView).setTextColor(if(active)red else secondary);cell.getChildAt(1).visibility=if(active)View.VISIBLE else View.INVISIBLE
@@ -190,6 +209,7 @@ class DetailActivity : AppCompatActivity() {
  }
  private fun renderTab(){
   episodeArea.removeAllViews()
+  if (isMovie() && selectedTab == "Episodes") selectedTab = "Cast"
   if(selectedTab!="Episodes"){
    when(selectedTab){
     "Cast" -> {
@@ -234,14 +254,14 @@ class DetailActivity : AppCompatActivity() {
       "Source: "+data.optString("metadataSource"),
       "Format: "+data.optString("format"),
       "Status: "+data.optString("status"),
-      "Episodes: "+data.optInt("episodes"),
+      if (!isMovie()) "Episodes: "+data.optInt("episodes") else "",
       "Duration: "+data.optInt("duration").takeIf{it>0}?.let{"$it min"}.orEmpty(),
       "Score: "+data.optString("score"),
       "Genres: "+data.optString("genres"),
       "Studios / Creators: "+data.optString("creators"),
       data.optString("description")
      ).filter{it.isNotBlank() && !it.endsWith(": ") && !it.endsWith(": 0")}
-     episodeArea.addView(label(details.joinToString("\\n\\n"),14f,secondary).apply{setPadding(0,dp(18),0,0)})
+     details.forEach { value -> episodeArea.addView(label(value,14f,secondary).apply { setPadding(0,dp(8),0,0) }) }
     }
    }
    return
