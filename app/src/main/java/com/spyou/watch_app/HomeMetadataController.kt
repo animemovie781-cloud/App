@@ -588,23 +588,7 @@ class HomeMetadataController(
     }
 
     private fun aniListRequest(query: String): JSONObject {
-        val body = JSONObject().put("query", query)
-        val connection = URL("https://graphql.anilist.co").openConnection() as HttpURLConnection
-        connection.requestMethod = "POST"
-        connection.connectTimeout = 6000
-        connection.readTimeout = 9000
-        connection.doOutput = true
-        connection.setRequestProperty("Content-Type", "application/json")
-        connection.setRequestProperty("Accept", "application/json")
-        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        connection.setRequestProperty("Origin", "https://anilist.co")
-        connection.setRequestProperty("Referer", "https://anilist.co/")
-        connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
-        val stream = if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream
-        val result = stream.bufferedReader().use { it.readText() }
-        connection.disconnect()
-        val envelope = JSONObject(result)
-        return envelope.optJSONObject("data") ?: throw IllegalStateException(envelope.optJSONArray("errors")?.optJSONObject(0)?.optString("message") ?: "AniList returned no data")
+        return AniListGraphQL.query(query)
     }
 
     private fun tmdbRequest(path: String): JSONObject {
