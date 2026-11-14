@@ -12,6 +12,9 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import coil.load
@@ -20,9 +23,16 @@ import org.json.JSONObject
 class DetailActivity : AppCompatActivity() {
  companion object {
   const val EXTRA_ITEM = "detail_item_json"
-  fun intent(c: android.content.Context, item: JSONObject) =
-   Intent(c, DetailActivity::class.java).putExtra(EXTRA_ITEM, item.toString())
+  fun intent(c: android.content.Context, item: JSONObject): Intent {
+   Net.init(c)
+   if (item.optString("mediaType") == "anime") {
+    item.optString("id").toIntOrNull()?.let { AnimeEpisodeMetadataRepository.prefetch(it) }
+   }
+   return Intent(c, DetailActivity::class.java).putExtra(EXTRA_ITEM, item.toString())
+  }
   private val aniListDetailCache = java.util.concurrent.ConcurrentHashMap<Int, JSONObject>()
+  private val aniListLiteCache = java.util.concurrent.ConcurrentHashMap<Int, JSONObject>()
+  private val bundleCache = java.util.concurrent.ConcurrentHashMap<String, TmdbDetailBundle>()
  }
  private lateinit var data: JSONObject
  private lateinit var content: LinearLayout
@@ -49,6 +59,7 @@ class DetailActivity : AppCompatActivity() {
  private var episodeCount = 0
  private var aniListDetailsLoaded = false
  private var aniListMalId: Int? = null
+ private var loadJob: Job? = null
  private var aniListItem: JSONObject? = null
  private val bg = 0xFF0B0B0F.toInt()
  private val surface = 0xFF16161C.toInt()
@@ -81,6 +92,7 @@ class DetailActivity : AppCompatActivity() {
  private fun toast(s:String)=Toast.makeText(this,s,Toast.LENGTH_SHORT).show()
  override fun onCreate(state:Bundle?){
   super.onCreate(state)
+  Net.init(applicationContext)
   window.statusBarColor=bg;window.navigationBarColor=bg
   data=runCatching{JSONObject(intent.getStringExtra(EXTRA_ITEM).orEmpty())}.getOrElse{JSONObject()}
   selectedSeason = detectSeasonNumber(data.optString("title"), data.optString("season")).coerceAtLeast(1)
@@ -151,7 +163,7 @@ class DetailActivity : AppCompatActivity() {
   content.addView(tabsContainer)
   episodeArea=LinearLayout(this).apply{orientation=1}
   content.addView(episodeArea)
-  scroll.addView(content);setContentView(scroll);renderTab();loadTmdbDetails()
+  scroll.addView(content);setContentView(scroll);paintFromCache();renderTab();loadTmdbDetails()
  }
  private fun primaryButton(caption:String,iconId:Int,color:Int,textColor:Int,onTap:()->Unit):View{
   val row=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;background=shape(color,8f);setOnClickListener{onTap()}}
@@ -398,71 +410,125 @@ class DetailActivity : AppCompatActivity() {
   if(current.childCount>0)rows.addView(current,LinearLayout.LayoutParams(-1,-2))
   episodeArea.addView(rows,LinearLayout.LayoutParams(-1,-2))
  }
+ /** Cache-first: draw metadata and episode data before any refresh request. */
+ private fun paintFromCache(){
+  val id=data.optString("id").toIntOrNull() ?: return
+  if(data.optString("mediaType") !in listOf("anime","manga","novel")) return
+  val full=aniListDetailCache[id] ?: Net.readCache("al_full_$id",6*60*60_000L)
+   ?.let{runCatching{JSONObject(it)}.getOrNull()}
+  val lite=aniListLiteCache[id] ?: Net.readCache("al_lite_$id",30*60_000L)
+   ?.let{runCatching{JSONObject(it)}.getOrNull()}
+  (full ?: lite)?.let{applyDetailMetadata(JSONObject(it.toString()))}
+  if(full!=null) aniListDetailsLoaded=true
+  AnimeEpisodeMetadataRepository.cached(id)?.let{episodes->
+   tmdbBundle=TmdbDetailBundle("tv",0,emptyList(),emptyList(),JSONObject(),episodes)
+  }
+ }
+
  private fun loadTmdbDetails(){
-  if (tmdbLoading) return
+  if(loadJob?.isActive==true) return
   tmdbLoading=true
   tmdbError=null
   renderTab()
-  lifecycleScope.launch {
-   val isAniListTitle = data.optString("mediaType") in listOf("anime","manga","novel")
+  loadJob=lifecycleScope.launch {
    try {
-    // AniList is the primary source for anime. Render its metadata immediately;
-    // do not wait for the slower TMDB multi-endpoint lookup before showing tabs.
-    val detailData = withContext(Dispatchers.IO) { loadAniListDetailIfNeeded() }
-    applyDetailMetadata(detailData)
-    if (isAniListTitle) {
-     tmdbLoading = false
-     renderTab()
-     val status = aniListItem?.optString("status").orEmpty()
-     // Upcoming titles and AniList movies have no season episode list to resolve.
-     if (aniListFormat.equals("MOVIE", true) || status == "NOT_YET_RELEASED" || episodeCount <= 0) {
-      tmdbBundle = null
-      tmdbError = null
-      return@launch
+    if(data.optString("mediaType") in listOf("anime","manga","novel")) {
+     loadAnimeFast()
+    } else {
+     val kind=data.optString("mediaType").ifBlank{"tv"}
+     val id=data.optString("id")
+     val key="$kind:$id:${title()}:$selectedSeason"
+     bundleCache[key]?.let{tmdbBundle=it} ?: run {
+      val result=withContext(Dispatchers.IO) {
+       TmdbDetailRepository().load(title(),kind,id,selectedSeason,selectedEpisode)
+      }
+      tmdbBundle=result
+      bundleCache[key]=result
      }
-     // AniList already powers Cast, Relations and Details; only fetch TMDB
-     // episode enrichment in the background for released/airing series.
-     tmdbLoading = true
-     if (selectedTab != "Episodes") renderTab()
     }
-    val result = withContext(Dispatchers.IO) {
-     val kind = data.optString("mediaType")
-     if (kind=="anime" || kind=="manga" || kind=="novel" || kind.isBlank())
-      TmdbDetailRepository().load(title(), if(aniListFormat.equals("MOVIE",true)) "movie" else "tv", "", selectedSeason, selectedEpisode)
-     else TmdbDetailRepository().load(title(), kind, data.optString("id"), selectedSeason, selectedEpisode)
-    }
-    tmdbBundle = if (data.optString("mediaType") == "anime" && aniListMalId != null) {
-     val enriched = withContext(Dispatchers.IO) {
-      AnimeEpisodeMetadataRepository.enrich(result.episodes, aniListMalId, result.tmdbId)
-     }
-     result.copy(episodes = enriched)
-    } else result
-   } catch (error: Exception) {
-    tmdbError = error.message ?: "Metadata request failed"
+   } catch(error: kotlinx.coroutines.CancellationException) {
+    throw error
+   } catch(error: Exception) {
+    tmdbError=error.message ?: "Metadata request failed"
    } finally {
-    tmdbLoading = false
+    tmdbLoading=false
     renderTab()
    }
   }
  }
 
- private fun loadAniListDetailIfNeeded():JSONObject?{
-  val kind=data.optString("mediaType")
+ /** AniList LITE, AniZip episodes and AniList FULL are started concurrently. */
+ private suspend fun loadAnimeFast(){
+  val aniId=data.optString("id").toIntOrNull()
+  val key="anime:$aniId:$selectedSeason"
+  bundleCache[key]?.let{tmdbBundle=it}
+  coroutineScope {
+   val liteDeferred=async(Dispatchers.IO){runCatching{loadAniListDetailIfNeeded(false)}.getOrNull()}
+   val fullDeferred=async(Dispatchers.IO){runCatching{loadAniListDetailIfNeeded(true)}.getOrNull()}
+   val episodeDeferred=async(Dispatchers.IO){
+    if(aniId==null || bundleCache[key]!=null) emptyList<TmdbEpisode>()
+    else runCatching{AnimeEpisodeMetadataRepository.fetchByAniListId(aniId)}.getOrDefault(emptyList())
+   }
+
+   val lite=liteDeferred.await()
+   if(lite!=null) applyDetailMetadata(lite)
+   renderTab()
+
+   val status=aniListItem?.optString("status").orEmpty()
+   val isMovieTitle=aniListFormat.equals("MOVIE",true)
+   val shouldHaveEpisodes=!isMovieTitle && status!="NOT_YET_RELEASED" && episodeCount>0
+   if(!shouldHaveEpisodes){
+    tmdbBundle=null
+    tmdbError=null
+   } else if(bundleCache[key]==null){
+    var episodes=episodeDeferred.await()
+    if(episodes.isEmpty()){
+     // Only use TMDB as a last resort; never block the AniList first paint.
+     episodes=runCatching {
+      withContext(Dispatchers.IO) {
+       TmdbDetailRepository().load(title(),"tv","",selectedSeason,selectedEpisode,includeExtras=false).episodes
+      }
+     }.getOrDefault(emptyList())
+    }
+    if(episodes.isNotEmpty()){
+     val bundle=TmdbDetailBundle("tv",0,emptyList(),emptyList(),JSONObject(),episodes)
+     tmdbBundle=bundle
+     bundleCache[key]=bundle
+    }
+   }
+
+   tmdbLoading=false
+   tmdbError=null
+   renderTab()
+   fullDeferred.await()?.let{applyDetailMetadata(it)}
+   aniListDetailsLoaded=true
+   renderTab()
+  }
+ }
+
+ private suspend fun loadAniListDetailIfNeeded(full:Boolean=true):JSONObject?{
   val id=data.optString("id").toIntOrNull() ?: return null
-  if(kind !in listOf("anime","manga","novel")) return null
-  aniListDetailCache[id]?.let { return JSONObject(it.toString()) }
-  val query="query(\$id:Int!){Media(id:\$id){id idMal title{english romaji native} description(asHtml:false) episodes format seasonYear season status averageScore source genres studios{nodes{name}} staff{edges{role node{name{full}}}} characters(page:1,perPage:30,sort:ROLE){edges{role node{id name{full} image{large}} voiceActors(language:JAPANESE){id name{full} image{large}}}} relations{edges{relationType(version:2) node{id type format title{english romaji native} coverImage{large} startDate{year}}}} countryOfOrigin synonyms popularity favourites tags{name rank isMediaSpoiler} startDate{year month day} endDate{year month day}}}"
+  if(data.optString("mediaType") !in listOf("anime","manga","novel")) return null
+  val memory=if(full) aniListDetailCache else aniListLiteCache
+  memory[id]?.let{return JSONObject(it.toString())}
+  val diskKey="al_${if(full)"full" else "lite"}_$id"
+  Net.readCache(diskKey,if(full)6*60*60_000L else 30*60_000L)?.let{cached->
+   runCatching{JSONObject(cached)}.getOrNull()?.let{item->
+    memory[id]=item
+    return JSONObject(item.toString())
+   }
+  }
+  val liteFields="id idMal title{english romaji native} description(asHtml:false) episodes format seasonYear season status averageScore genres studios{nodes{name}} nextAiringEpisode{episode airingAt} staff(perPage:8){role node{name{full}}} countryOfOrigin startDate{year month day} endDate{year month day}"
+  val fullFields=liteFields+" source synonyms popularity favourites tags{name rank isMediaSpoiler} characters(page:1,perPage:30,sort:ROLE){edges{role node{id name{full} image{large}} voiceActors(language:JAPANESE){id name{full} image{large}}}} relations{edges{relationType(version:2) node{id type format title{english romaji native} coverImage{large} startDate{year}}}}"
+  val query="query(\$id:Int!){Media(id:\$id){${if(full)fullFields else liteFields}}}"
   val body=JSONObject().put("query",query).put("variables",JSONObject().put("id",id))
-  val connection=java.net.URL("https://graphql.anilist.co").openConnection() as java.net.HttpURLConnection
-  connection.requestMethod="POST";connection.connectTimeout=4500;connection.readTimeout=6500;connection.doOutput=true
-  connection.setRequestProperty("Content-Type","application/json");connection.setRequestProperty("Accept","application/json")
-  connection.outputStream.use{it.write(body.toString().toByteArray(Charsets.UTF_8))}
-  val status=connection.responseCode
-  val stream=if(status in 200..299) connection.inputStream else connection.errorStream
-  val raw=stream.bufferedReader().use{it.readText()};connection.disconnect()
+  val (status,raw)=Net.postJson("https://graphql.anilist.co",body.toString())
   if(status !in 200..299) throw IllegalStateException("AniList HTTP $status")
-  val media = JSONObject(raw).optJSONObject("data")?.optJSONObject("Media")
-  if (media != null) aniListDetailCache[id] = JSONObject(media.toString())
+  val media=JSONObject(raw).optJSONObject("data")?.optJSONObject("Media")
+  if(media!=null){
+   memory[id]=JSONObject(media.toString())
+   Net.writeCache(diskKey,media.toString())
+  }
   return media
  }
 
