@@ -10,6 +10,10 @@ import android.view.Gravity
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import coil.load
 import org.json.JSONObject
 
@@ -27,6 +31,11 @@ class DetailActivity : AppCompatActivity() {
  private var notified = false
  private var expanded = false
  private var listMode = false
+ private var selectedSeason = 1
+ private var selectedEpisode = 1
+ private var tmdbLoading = false
+ private var tmdbError: String? = null
+ private var tmdbBundle: TmdbDetailBundle? = null
  private val bg = 0xFF0B0B0F.toInt()
  private val surface = 0xFF16161C.toInt()
  private val panel = 0xFF20212A.toInt()
@@ -122,7 +131,7 @@ class DetailActivity : AppCompatActivity() {
   content.addView(tabs)
   episodeArea=LinearLayout(this).apply{orientation=1}
   content.addView(episodeArea)
-  scroll.addView(content);setContentView(scroll);renderTab()
+  scroll.addView(content);setContentView(scroll);renderTab();loadTmdbDetails()
  }
  private fun primaryButton(caption:String,iconId:Int,color:Int,textColor:Int,onTap:()->Unit):View{
   val row=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER;background=shape(color,8f);setOnClickListener{onTap()}}
@@ -137,10 +146,15 @@ class DetailActivity : AppCompatActivity() {
  }
  private fun renderTab(){
   episodeArea.removeAllViews()
-  if(selectedTab!="Episodes"){
-   episodeArea.addView(label(when(selectedTab){"Details"->data.optString("description","No details available.");"Cast"->data.optString("cast","Cast information is not available.");else->"No related titles available."},14f,secondary).apply{setPadding(0,dp(18),0,0)})
-   return
+  when(selectedTab){
+   "Cast" -> renderCastTab()
+   "Relations" -> renderRelationsTab()
+   "Details" -> renderDetailsTab()
+   else -> renderEpisodesTab()
   }
+ }
+
+ private fun renderEpisodesTab(){
   val heading=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
   heading.addView(label("Episodes",22f,Color.WHITE,true),LinearLayout.LayoutParams(0,-2,1f))
   val toggle=FrameLayout(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(panel)};setOnClickListener{listMode=!listMode;renderTab()}}
@@ -151,16 +165,106 @@ class DetailActivity : AppCompatActivity() {
   heading.addView(more,LinearLayout.LayoutParams(dp(36),dp(36)))
   episodeArea.addView(heading,LinearLayout.LayoutParams(-1,dp(54)).apply{topMargin=dp(8);bottomMargin=dp(10)})
   if(listMode){
-   for(n in episodes() downTo 1){val row=TextView(this).apply{text="Episode $n";textSize=15f;setTextColor(Color.WHITE);gravity=Gravity.CENTER_VERTICAL;setPadding(dp(16),0,0,0);background=shape(panel,10f);setOnClickListener{toast("Episode $n: connect a source to play")}}
-    episodeArea.addView(row,LinearLayout.LayoutParams(-1,dp(54)).apply{bottomMargin=dp(8)})}
+   for(n in episodes() downTo 1){
+    val row=TextView(this).apply{
+     text="Episode $n";textSize=15f;setTextColor(Color.WHITE);gravity=Gravity.CENTER_VERTICAL
+     setPadding(dp(16),0,0,0);background=shape(if(n==selectedEpisode)0xFF343541.toInt() else panel,10f)
+     setOnClickListener{selectedEpisode=n;renderTab();if(selectedTab=="Cast")loadTmdbDetails()}
+    }
+    episodeArea.addView(row,LinearLayout.LayoutParams(-1,dp(54)).apply{bottomMargin=dp(8)})
+   }
   }else{
    val grid=GridLayout(this).apply{columnCount=5;useDefaultMargins=false}
    for(n in episodes() downTo 1){
-    val tile=FrameLayout(this).apply{background=shape(panel,10f);setOnClickListener{toast("Episode $n: connect a source to play")}}
+    val tile=FrameLayout(this).apply{
+     background=shape(if(n==selectedEpisode)0xFF343541.toInt() else panel,10f)
+     setOnClickListener{selectedEpisode=n;if(selectedTab=="Cast")loadTmdbDetails();renderTab()}
+    }
     tile.addView(label(n.toString(),15f,Color.WHITE,true).apply{gravity=Gravity.CENTER})
     grid.addView(tile,GridLayout.LayoutParams().apply{width=0;height=dp(56);columnSpec=GridLayout.spec(GridLayout.UNDEFINED,1f);setMargins(dp(4),dp(5),dp(4),dp(5))})
    }
    episodeArea.addView(grid,LinearLayout.LayoutParams(-1,-2))
   }
  }
+
+ private fun renderCastTab(){
+  val heading=label("Episode $selectedEpisode Cast",20f,Color.WHITE,true)
+  episodeArea.addView(heading,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(18);bottomMargin=dp(12)})
+  if(tmdbLoading){episodeArea.addView(label("Loading cast from TMDB…",14f,secondary));return}
+  val cast=tmdbBundle?.cast.orEmpty()
+  if(cast.isEmpty()){
+   episodeArea.addView(label(tmdbError ?: "No cast information available for this episode.",14f,secondary));return
+  }
+  val scroller=HorizontalScrollView(this).apply{isHorizontalScrollBarEnabled=false;clipToPadding=false}
+  val rail=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
+  cast.forEach{person->
+   val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;layoutParams=LinearLayout.LayoutParams(dp(104),-2).apply{rightMargin=dp(10)}}
+   val photo=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP;background=shape(panel,10f);contentDescription=person.name}
+   if(person.profileUrl!=null) photo.load(person.profileUrl){crossfade(true);allowHardware(false)}
+   card.addView(photo,LinearLayout.LayoutParams(dp(104),dp(124)))
+   card.addView(label(person.name,13f,Color.WHITE,true).apply{maxLines=2;ellipsize=TextUtils.TruncateAt.END;setPadding(0,dp(7),0,0)})
+   if(person.character.isNotBlank()) card.addView(label(person.character,11f,secondary).apply{maxLines=2;ellipsize=TextUtils.TruncateAt.END;setPadding(0,dp(3),0,0)})
+   rail.addView(card)
+  }
+  scroller.addView(rail);episodeArea.addView(scroller,LinearLayout.LayoutParams(-1,-2))
+  episodeArea.addView(label("Data provided by TMDB",11f,0xFF6E6E78.toInt()).apply{setPadding(0,dp(14),0,0)})
+ }
+
+ private fun renderRelationsTab(){
+  episodeArea.addView(label("Related titles",20f,Color.WHITE,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(18);bottomMargin=dp(12)})
+  if(tmdbLoading){episodeArea.addView(label("Finding related titles…",14f,secondary));return}
+  val items=tmdbBundle?.relations.orEmpty()
+  if(items.isEmpty()){episodeArea.addView(label(tmdbError ?: "No related titles available.",14f,secondary));return}
+  val scroller=HorizontalScrollView(this).apply{isHorizontalScrollBarEnabled=false;clipToPadding=false}
+  val rail=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
+  items.forEach{item->
+   val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;layoutParams=LinearLayout.LayoutParams(dp(112),-2).apply{rightMargin=dp(12)}}
+   val poster=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP;background=shape(panel,10f);contentDescription=item.title}
+   if(item.posterUrl!=null) poster.load(item.posterUrl){crossfade(true);allowHardware(false)}
+   card.addView(poster,LinearLayout.LayoutParams(dp(112),dp(164)))
+   card.addView(label(item.title,12f,Color.WHITE,true).apply{maxLines=2;ellipsize=TextUtils.TruncateAt.END;setPadding(0,dp(7),0,0)})
+   rail.addView(card)
+  }
+  scroller.addView(rail);episodeArea.addView(scroller,LinearLayout.LayoutParams(-1,-2))
+  episodeArea.addView(label("Recommendations and similar titles · TMDB",11f,0xFF6E6E78.toInt()).apply{setPadding(0,dp(14),0,0)})
+ }
+
+ private fun renderDetailsTab(){
+  episodeArea.addView(label("Information",20f,Color.WHITE,true),LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(18);bottomMargin=dp(10)})
+  if(tmdbLoading){episodeArea.addView(label("Loading title details…",14f,secondary));return}
+  val details=tmdbBundle?.details
+  if(details==null){episodeArea.addView(label(tmdbError ?: "TMDB details are not available.",14f,secondary));return}
+  val genres=details.optJSONArray("genres")?.let{arr->(0 until arr.length()).mapNotNull{arr.optJSONObject(it)?.optString("name")?.takeIf{n->n.isNotBlank()}}.joinToString(" · ")}.orEmpty()
+  val studios=details.optJSONArray("production_companies")?.let{arr->(0 until arr.length()).mapNotNull{arr.optJSONObject(it)?.optString("name")?.takeIf{n->n.isNotBlank()}}.take(5).joinToString(" · ")}.orEmpty()
+  val networks=details.optJSONArray("networks")?.let{arr->(0 until arr.length()).mapNotNull{arr.optJSONObject(it)?.optString("name")?.takeIf{n->n.isNotBlank()}}.take(4).joinToString(" · ")}.orEmpty()
+  val date=details.optString("first_air_date").takeIf{it.isNotBlank()}?:details.optString("release_date")
+  val rating=if(details.has("vote_average"))String.format("%.1f / 10",details.optDouble("vote_average")) else ""
+  val language=details.optString("original_language").uppercase()
+  val status=details.optString("status")
+  val runtime=details.optInt("runtime").takeIf{it>0}?.let{"$it min"}?:""
+  val rows=listOf("Genres" to genres,"Status" to status,"Release date" to date,"Rating" to rating,"Original language" to language,"Studios" to studios,"Networks" to networks,"Runtime" to runtime)
+  rows.filter{it.second.isNotBlank()}.forEach{(key,value)->
+   val row=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(0,dp(10),0,dp(10))}
+   row.addView(label(key.uppercase(),11f,0xFF777782.toInt(),true))
+   row.addView(label(value,14f,Color.WHITE).apply{setPadding(0,dp(5),0,0)})
+   episodeArea.addView(row,LinearLayout.LayoutParams(-1,-2))
+   episodeArea.addView(View(this).apply{setBackgroundColor(0x22FFFFFF)},LinearLayout.LayoutParams(-1,dp(1)))
+  }
+  episodeArea.addView(label("Metadata provided by TMDB",11f,0xFF6E6E78.toInt()).apply{setPadding(0,dp(12),0,0)})
+ }
+
+ private fun loadTmdbDetails(){
+  tmdbLoading=true;tmdbError=null;renderTab()
+  lifecycleScope.launch{
+   try{
+    val result=withContext(Dispatchers.IO){
+     TmdbDetailRepository().load(title(),data.optString("mediaType"),data.optString("id"),selectedSeason,selectedEpisode)
+    }
+    tmdbBundle=result
+   }catch(error:Exception){tmdbError=error.message ?: "TMDB request failed"}
+   tmdbLoading=false
+   renderTab()
+  }
+ }
+
 }
