@@ -43,6 +43,7 @@ class DetailActivity : AppCompatActivity() {
  private var creatorsView: TextView? = null
  private var episodeCount = 0
  private var aniListDetailsLoaded = false
+ private var aniListMalId: Int? = null
  private val bg = 0xFF0B0B0F.toInt()
  private val surface = 0xFF16161C.toInt()
  private val panel = 0xFF20212A.toInt()
@@ -323,7 +324,12 @@ class DetailActivity : AppCompatActivity() {
      if(kind=="anime" || kind=="manga" || kind=="novel" || kind.isBlank()) TmdbDetailRepository().load(title(),"tv","",selectedSeason,selectedEpisode)
      else TmdbDetailRepository().load(title(),kind,data.optString("id"),selectedSeason,selectedEpisode)
     }
-    tmdbBundle=result
+    tmdbBundle = if (data.optString("mediaType") == "anime" && aniListMalId != null) {
+     val enriched = withContext(Dispatchers.IO) {
+      AnimeEpisodeMetadataRepository.enrich(result.episodes, aniListMalId, result.tmdbId)
+     }
+     result.copy(episodes = enriched)
+    } else result
    }catch(error:Exception){tmdbError=error.message ?: "TMDB request failed"}
    tmdbLoading=false
    renderTab()
@@ -362,6 +368,7 @@ class DetailActivity : AppCompatActivity() {
    if(role.contains("director")||role.contains("creator")||role.contains("series composition")) edge.optJSONObject("node")?.optJSONObject("name")?.optString("full")?.takeIf{n->n.isNotBlank()} else null
   }.distinct().take(5).joinToString(" · ")}.orEmpty()
   episodeCount=item.optInt("episodes",0).takeIf{it>0}?:0
+  aniListMalId=item.optInt("idMal",0).takeIf{it>0}
   aniListDetailsLoaded=true
   if(item.optInt("seasonYear")>0) data.put("year",item.optInt("seasonYear").toString())
   if(item.optString("status").isNotBlank()) data.put("status",item.optString("status"))
