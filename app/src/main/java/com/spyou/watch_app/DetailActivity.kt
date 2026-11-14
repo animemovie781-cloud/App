@@ -50,6 +50,10 @@ class DetailActivity : AppCompatActivity() {
  private val red = 0xFFFF4D57.toInt()
  private fun dp(v:Int)= (v*resources.displayMetrics.density).toInt()
  private fun title()=data.optString("title").takeIf{it.isNotBlank()&&it!="null"}?:"Devils' Crest"
+ private fun detectSeasonNumber(vararg values:String):Int = values.firstNotNullOfOrNull { value ->
+  Regex("(?i)(?:season|s)\\s*[-:#]?\\s*(\\d+)").find(value)?.groupValues?.getOrNull(1)?.toIntOrNull()
+   ?: Regex("(?i)(\\d+)(?:st|nd|rd|th)\\s+season").find(value)?.groupValues?.getOrNull(1)?.toIntOrNull()
+ } ?: 1
  private fun episodes()=if(aniListDetailsLoaded) episodeCount else data.optInt("episodes",0).takeIf{it>0} ?: 0
  private fun meta():String {
   val year=data.optString("year").takeIf{it.isNotBlank()&&it!="null"}?:"2026"
@@ -72,6 +76,7 @@ class DetailActivity : AppCompatActivity() {
   super.onCreate(state)
   window.statusBarColor=bg;window.navigationBarColor=bg
   data=runCatching{JSONObject(intent.getStringExtra(EXTRA_ITEM).orEmpty())}.getOrElse{JSONObject()}
+  selectedSeason = detectSeasonNumber(data.optString("title"), data.optString("season")).coerceAtLeast(1)
   val scroll=ScrollView(this).apply{setBackgroundColor(bg);isFillViewport=true;clipToPadding=false}
   content=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(16),0,dp(16),dp(28))}
   // Expanded 320dp artwork with bottom scrim and floating back control.
@@ -216,18 +221,18 @@ class DetailActivity : AppCompatActivity() {
     val thumbFrame=FrameLayout(this).apply{background=shape(panel,10f);clipToOutline=true;layoutParams=LinearLayout.LayoutParams(dp(124),dp(72));setOnClickListener{selectedEpisode=n;renderTab();loadTmdbDetails()}}
     val thumb=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP;setBackgroundColor(panel);contentDescription=ep?.name ?: "Episode $n";val imageUrl=ep?.stillUrl ?: data.optString("cover").takeIf{it.startsWith("http")};if(imageUrl!=null)load(imageUrl){crossfade(true);allowHardware(false)}}
     thumbFrame.addView(thumb,FrameLayout.LayoutParams(-1,-1))
-    if(ep!=null&&ep.rating>0)thumbFrame.addView(label("★ %.1f".format(ep.rating),10f,Color.WHITE,true).apply{background=shape(0xCC000000.toInt(),5f);setPadding(dp(5),dp(3),dp(5),dp(3))},FrameLayout.LayoutParams(-2,-2,Gravity.TOP or Gravity.START).apply{leftMargin=dp(5);topMargin=dp(5)})
+    thumbFrame.addView(label(if(ep!=null&&ep.rating>0) "★ %.1f".format(ep.rating) else "★ —",10f,Color.WHITE,true).apply{background=shape(0xCC000000.toInt(),5f);setPadding(dp(5),dp(3),dp(5),dp(3))},FrameLayout.LayoutParams(-2,-2,Gravity.TOP or Gravity.START).apply{leftMargin=dp(5);topMargin=dp(5)})
     thumbFrame.addView(image(R.drawable.detail_play,16).apply{setColorFilter(Color.WHITE);alpha=.9f},FrameLayout.LayoutParams(dp(18),dp(18),Gravity.CENTER))
     top.addView(thumbFrame)
     val info=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),0,dp(4),0);layoutParams=LinearLayout.LayoutParams(0,-2,1f);setOnClickListener{selectedEpisode=n;renderTab();loadTmdbDetails()}}
     info.addView(label("$n. ${ep?.name?.takeIf{it.isNotBlank()} ?: "Episode $n"}",15f,Color.WHITE,true).apply{maxLines=2;ellipsize=TextUtils.TruncateAt.END})
-    val meta=buildList{if((ep?.runtime ?: 0)>0)add("${ep!!.runtime} min");if(!ep?.airDate.isNullOrBlank())add(ep!!.airDate)}.joinToString("  ·  ")
-    if(meta.isNotBlank())info.addView(label(meta,12f,secondary).apply{setPadding(0,dp(6),0,0)})
+    val meta=buildList{add(if((ep?.runtime ?: 0)>0) "${ep!!.runtime} min" else "Runtime unavailable");add(ep?.airDate?.takeIf{it.isNotBlank()} ?: "Air date unavailable")}.joinToString("  ·  ")
+    info.addView(label(meta,12f,secondary).apply{setPadding(0,dp(6),0,0);maxLines=2;ellipsize=TextUtils.TruncateAt.END})
     top.addView(info)
     top.addView(ImageView(this).apply{setImageResource(R.drawable.detail_download);setColorFilter(Color.WHITE);scaleType=ImageView.ScaleType.FIT_CENTER;alpha=.9f;contentDescription="Download episode $n";setOnClickListener{toast("No download source available for episode $n")}},LinearLayout.LayoutParams(dp(24),dp(24)).apply{leftMargin=dp(5);rightMargin=dp(3)})
     card.addView(top)
-    val synopsis=ep?.overview.orEmpty()
-    if(synopsis.isNotBlank())card.addView(label(synopsis,13f,secondary).apply{typeface=Typeface.create("sans-serif",Typeface.ITALIC);maxLines=2;ellipsize=TextUtils.TruncateAt.END;setPadding(0,dp(9),0,0)})
+    val synopsis=ep?.overview?.takeIf{it.isNotBlank()} ?: "Episode description unavailable."
+    card.addView(label(synopsis,13f,secondary).apply{typeface=Typeface.create("sans-serif",Typeface.ITALIC);maxLines=2;ellipsize=TextUtils.TruncateAt.END;setPadding(0,dp(9),0,0)})
     episodeArea.addView(card,LinearLayout.LayoutParams(-1,-2))
    }
   }
