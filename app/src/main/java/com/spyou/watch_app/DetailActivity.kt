@@ -41,6 +41,7 @@ class DetailActivity : AppCompatActivity() {
  private var genresView: TextView? = null
  private var creatorsView: TextView? = null
  private var episodeCount = 0
+ private var aniListDetailsLoaded = false
  private val bg = 0xFF0B0B0F.toInt()
  private val surface = 0xFF16161C.toInt()
  private val panel = 0xFF20212A.toInt()
@@ -48,7 +49,7 @@ class DetailActivity : AppCompatActivity() {
  private val red = 0xFFFF4D57.toInt()
  private fun dp(v:Int)= (v*resources.displayMetrics.density).toInt()
  private fun title()=data.optString("title").takeIf{it.isNotBlank()&&it!="null"}?:"Devils' Crest"
- private fun episodes()=episodeCount.takeIf{it>0} ?: data.optInt("episodes",0).takeIf{it>0} ?: 0
+ private fun episodes()=if(aniListDetailsLoaded) episodeCount else data.optInt("episodes",0).takeIf{it>0} ?: 0
  private fun meta():String {
   val year=data.optString("year").takeIf{it.isNotBlank()&&it!="null"}?:"2026"
   val status=data.optString("status").takeIf{it.isNotBlank()&&it!="null"}?:"Ongoing"
@@ -289,7 +290,7 @@ class DetailActivity : AppCompatActivity() {
   val kind=data.optString("mediaType")
   val id=data.optString("id").toIntOrNull() ?: return null
   if(kind !in listOf("anime","manga","novel")) return null
-  val query="query($id:Int!){Media(id:$id){id title{english romaji native} description(asHtml:false) episodes seasonYear status genres studios{nodes{name}} staff{edges{role node{name{full}}}}}}"
+  val query="query(\\$id:Int!){Media(id:\\$id){id title{english romaji native} description(asHtml:false) episodes seasonYear status genres studios{nodes{name}} staff{edges{role node{name{full}}}}}}"
   val body=JSONObject().put("query",query).put("variables",JSONObject().put("id",id))
   val connection=java.net.URL("https://graphql.anilist.co").openConnection() as java.net.HttpURLConnection
   connection.requestMethod="POST";connection.connectTimeout=7000;connection.readTimeout=10000;connection.doOutput=true
@@ -317,6 +318,7 @@ class DetailActivity : AppCompatActivity() {
    if(role.contains("director")||role.contains("creator")||role.contains("series composition")) edge.optJSONObject("node")?.optJSONObject("name")?.optString("full")?.takeIf{n->n.isNotBlank()} else null
   }.distinct().take(5).joinToString(" · ")}.orEmpty()
   episodeCount=item.optInt("episodes",0).takeIf{it>0}?:0
+  aniListDetailsLoaded=true
   if(item.optInt("seasonYear")>0) data.put("year",item.optInt("seasonYear").toString())
   if(item.optString("status").isNotBlank()) data.put("status",item.optString("status"))
   data.put("description",description).put("genres",genres).put("creators",creators)
