@@ -30,12 +30,23 @@ internal data class TmdbRelated(
     val mediaType: String
 )
 
+internal data class TmdbEpisode(
+    val number: Int,
+    val name: String,
+    val overview: String,
+    val stillUrl: String?,
+    val airDate: String,
+    val runtime: Int,
+    val rating: Double
+)
+
 internal data class TmdbDetailBundle(
     val mediaType: String,
     val tmdbId: Int,
     val cast: List<TmdbPerson>,
     val relations: List<TmdbRelated>,
-    val details: JSONObject
+    val details: JSONObject,
+    val episodes: List<TmdbEpisode>
 )
 
 internal class TmdbDetailRepository {
@@ -60,7 +71,19 @@ internal class TmdbDetailRepository {
         val recommendations = runCatching { request("/$type/$id/recommendations") }.getOrDefault(JSONObject())
         val similar = runCatching { request("/$type/$id/similar") }.getOrDefault(JSONObject())
         val relations = mergeResults(recommendations.optJSONArray("results"), similar.optJSONArray("results"), type)
-        return TmdbDetailBundle(type, id, cast, relations, details)
+        val seasonData = if (type == "tv") runCatching { request("/tv/$id/season/$season") }.getOrDefault(JSONObject()) else JSONObject()
+        val episodeArray = seasonData.optJSONArray("episodes")
+        val episodeItems = if (episodeArray == null) emptyList() else (0 until episodeArray.length()).mapNotNull { index ->
+            val item = episodeArray.optJSONObject(index) ?: return@mapNotNull null
+            val number = item.optInt("episode_number", 0)
+            if (number <= 0) return@mapNotNull null
+            val still = item.optString("still_path").takeIf { it.isNotBlank() && it != "null" }
+            TmdbEpisode(number, item.optString("name").ifBlank { "Episode $number" },
+                item.optString("overview"), still?.let { imageBase + it },
+                item.optString("air_date"), item.optInt("runtime"),
+                item.optDouble("vote_average"))
+        }
+        return TmdbDetailBundle(type, id, cast, relations, details, episodeItems)
     }
 
     private fun resolve(title: String, sourceType: String, sourceId: String): Pair<String, Int>? {
