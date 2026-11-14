@@ -215,39 +215,51 @@ class ScheduleActivity : AppCompatActivity() {
 
     private fun fetchAniList(): List<Entry> {
         val cal = Calendar.getInstance()
-        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
         val start = cal.timeInMillis / 1000L
         cal.add(Calendar.DAY_OF_YEAR, 7)
         val end = cal.timeInMillis / 1000L
-        val query = "query(\$start:Int,\$end:Int,\$page:Int){Page(page:\$page,perPage:50){pageInfo{hasNextPage} airingSchedules(airingAt_greater:\$start,airingAt_lesser:\$end,sort:TIME){episode airingAt media{idMal isAdult title{english romaji} coverImage{large}}}}}"
+
+        val query = "query(\\$start:Int,\\$end:Int,\\$page:Int){Page(page:\\$page,perPage:50){pageInfo{hasNextPage} airingSchedules(airingAt_greater:\\$start,airingAt_lesser:\\$end,sort:TIME){episode airingAt media{idMal isAdult title{english romaji} coverImage{large}}}}}"
         val result = mutableListOf<Entry>()
-        for (page in 1..5) {
-            val body = JSONObject().put("query", query).put("variables", JSONObject().put("start", start).put("end", end).put("page", page))
-            val c = URL("https://graphql.anilist.co").openConnection() as HttpURLConnection
-            c.requestMethod = "POST"; c.connectTimeout = 4500; c.readTimeout = 6500; c.doOutput = true
-            c.setRequestProperty("Content-Type", "application/json"); c.setRequestProperty("Accept", "application/json")
-            c.setRequestProperty("Origin", "https://anilist.co"); c.setRequestProperty("Referer", "https://anilist.co/")
-            c.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
-            val stream = if (c.responseCode in 200..299) c.inputStream else c.errorStream
-            val json = JSONObject(stream.bufferedReader().use { it.readText() }); c.disconnect()
-            val pageData = json.optJSONObject("data")?.optJSONObject("Page") ?: break
+
+        // Two pages are enough to populate the first week quickly. Further
+        // paging is intentionally deferred to avoid exhausting AniList's
+        // temporarily reduced request budget during first screen load.
+        for (page in 1..2) {
+            val variables = JSONObject()
+                .put("start", start)
+                .put("end", end)
+                .put("page", page)
+            val data = AniListGraphQL.query(query, variables)
+            val pageData = data.optJSONObject("Page") ?: break
             val schedules = pageData.optJSONArray("airingSchedules") ?: break
+
             for (i in 0 until schedules.length()) {
                 val item = schedules.optJSONObject(i) ?: continue
                 val media = item.optJSONObject("media") ?: continue
                 if (media.optBoolean("isAdult")) continue
                 val titles = media.optJSONObject("title")
-                val en = titles?.optString("english").orEmpty()
-                val title = if (en.isNotBlank() && en != "null") en else titles?.optString("romaji").orEmpty()
+                val english = titles?.optString("english").orEmpty()
+                val title = if (english.isNotBlank() && english != "null") english
+                    else titles?.optString("romaji").orEmpty()
                 val at = item.optLong("airingAt")
                 if (title.isBlank() || at <= 0L) continue
-                result.add(Entry(if (media.isNull("idMal")) null else media.optInt("idMal"), title,
-                    media.optJSONObject("coverImage")?.optString("large")?.takeIf { it.isNotBlank() && it != "null" },
-                    item.optInt("episode"), at))
+                result.add(
+                    Entry(
+                        if (media.isNull("idMal")) null else media.optInt("idMal"),
+                        title,
+                        media.optJSONObject("coverImage")?.optString("large")
+                            ?.takeIf { it.isNotBlank() && it != "null" },
+                        item.optInt("episode"),
+                        at
+                    )
+                )
             }
             if (pageData.optJSONObject("pageInfo")?.optBoolean("hasNextPage") != true) break
         }
-        return result.distinctBy { it.malId.toString() + ":" + it.episode + ":" + it.at }.sortedBy { it.at }
+        return result.distinctBy { "${it.malId}:${it.episode}:${it.at}" }.sortedBy { it.at }
     }
 
     private fun fetchTmdb(): List<Entry> {
