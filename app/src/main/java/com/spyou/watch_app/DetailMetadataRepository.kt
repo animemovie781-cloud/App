@@ -63,7 +63,7 @@ class DetailMetadataRepository {
         val studios = JSONArray()
         val studioNodes = media.optJSONObject("studios")?.optJSONArray("nodes")
         if (studioNodes != null) for (i in 0 until studioNodes.length()) {
-            studioNodes.optJSONObject(i)?.optString("name")?.takeIf { it.isNotBlank() }?.let(studios::put)
+            studioNodes.optJSONObject(i)?.optString("name")?.takeIf { it.isNotBlank() }?.let { studios.put(it) }
         }
         val cast = JSONArray()
         val edges = media.optJSONObject("characters")?.optJSONObject("edges")
