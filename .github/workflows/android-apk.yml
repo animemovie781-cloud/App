@@ -2,7 +2,7 @@ name: Android APK Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/tmdb-detail-tabs]
     paths:
       - "**.kt"
       - "**.java"
