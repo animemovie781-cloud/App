@@ -30,7 +30,7 @@ class DetailActivity : AppCompatActivity() {
  private var saved = false
  private var notified = false
  private var expanded = false
- private var listMode = false
+ private var listMode = true
  private var newestFirst = true
  private var selectedSeason = 1
  private var selectedEpisode = 1
