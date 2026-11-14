@@ -84,8 +84,12 @@ internal class TmdbDetailRepository {
             }
             request("/tv/$id/season/$season")
         } else JSONObject()
-        val episodeArray = seasonData.optJSONArray("episodes")
-            ?: throw IllegalStateException("TMDB returned no episode list for Season $season.")
+        // Movies have no season/episode endpoint. Keep their bundle valid so
+        // Cast, Relations and Details tabs can still render without an Episodes tab.
+        val episodeArray = if (type == "tv") {
+            seasonData.optJSONArray("episodes")
+                ?: throw IllegalStateException("TMDB returned no episode list for Season $season.")
+        } else JSONArray()
         if (type == "tv" && episodeArray.length() == 0) {
             throw IllegalStateException("TMDB Season $season currently has no episode records.")
         }
