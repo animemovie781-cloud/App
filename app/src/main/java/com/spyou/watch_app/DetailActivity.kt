@@ -54,7 +54,7 @@ class DetailActivity : AppCompatActivity() {
   Regex("(?i)(?:season|s)\\s*[-:#]?\\s*(\\d+)").find(value)?.groupValues?.getOrNull(1)?.toIntOrNull()
    ?: Regex("(?i)(\\d+)(?:st|nd|rd|th)\\s+season").find(value)?.groupValues?.getOrNull(1)?.toIntOrNull()
  } ?: 1
- private fun episodes()=if(aniListDetailsLoaded) episodeCount else data.optInt("episodes",0).takeIf{it>0} ?: 0
+ private fun episodes()=tmdbBundle?.episodes?.size?.takeIf{it>0} ?: if(aniListDetailsLoaded) episodeCount else data.optInt("episodes",0).takeIf{it>0} ?: 0
  private fun meta():String {
   val year=data.optString("year").takeIf{it.isNotBlank()&&it!="null"}?:"2026"
   val status=data.optString("status").takeIf{it.isNotBlank()&&it!="null"}?:"Ongoing"
@@ -194,9 +194,18 @@ class DetailActivity : AppCompatActivity() {
   more.addView(image(R.drawable.detail_more,20),FrameLayout.LayoutParams(dp(20),dp(20),Gravity.CENTER))
   heading.addView(more,LinearLayout.LayoutParams(dp(36),dp(36)))
   episodeArea.addView(heading,LinearLayout.LayoutParams(-1,dp(54)).apply{topMargin=dp(8);bottomMargin=dp(10)})
-  if(episodes()<=0){episodeArea.addView(label("Episode information has not been announced yet.",14f,secondary));return}
-  val episodeMap=tmdbBundle?.episodes.orEmpty().associateBy{it.number}
-  val numbers=(1..episodes()).let{if(newestFirst)it.reversed() else it}
+  if(tmdbLoading && tmdbBundle==null){
+   episodeArea.addView(label("Loading episode details from TMDB…",14f,secondary).apply{setPadding(0,dp(8),0,dp(12))})
+   return
+  }
+  if(tmdbBundle==null || tmdbBundle?.episodes.isNullOrEmpty()){
+   val message=tmdbError ?: "TMDB has not returned episode metadata for this season."
+   episodeArea.addView(label(message,14f,secondary).apply{setPadding(0,dp(8),0,dp(10))})
+   episodeArea.addView(label("Tap to retry",13f,red,true).apply{setOnClickListener{loadTmdbDetails()}})
+   return
+  }
+  val episodeMap=tmdbBundle!!.episodes.associateBy{it.number}
+  val numbers=episodeMap.keys.sorted().let{if(newestFirst)it.reversed() else it}
   if(listMode){
    val grid=GridLayout(this).apply{columnCount=5;useDefaultMargins=false}
    numbers.forEachIndexed{index,n->
@@ -219,7 +228,7 @@ class DetailActivity : AppCompatActivity() {
     val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(0,0,0,dp(15))}
     val top=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
     val thumbFrame=FrameLayout(this).apply{background=shape(panel,10f);clipToOutline=true;layoutParams=LinearLayout.LayoutParams(dp(124),dp(72));setOnClickListener{selectedEpisode=n;renderTab();loadTmdbDetails()}}
-    val thumb=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP;setBackgroundColor(panel);contentDescription=ep?.name ?: "Episode $n";val imageUrl=ep?.stillUrl ?: data.optString("cover").takeIf{it.startsWith("http")};if(imageUrl!=null)load(imageUrl){crossfade(true);allowHardware(false)}}
+    val thumb=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP;setBackgroundColor(panel);contentDescription=ep?.name ?: "Episode $n";ep?.stillUrl?.let{load(it){crossfade(true);allowHardware(false)}}}
     thumbFrame.addView(thumb,FrameLayout.LayoutParams(-1,-1))
     thumbFrame.addView(label(if(ep!=null&&ep.rating>0) "★ %.1f".format(ep.rating) else "★ —",10f,Color.WHITE,true).apply{background=shape(0xCC000000.toInt(),5f);setPadding(dp(5),dp(3),dp(5),dp(3))},FrameLayout.LayoutParams(-2,-2,Gravity.TOP or Gravity.START).apply{leftMargin=dp(5);topMargin=dp(5)})
     thumbFrame.addView(image(R.drawable.detail_play,16).apply{setColorFilter(Color.WHITE);alpha=.9f},FrameLayout.LayoutParams(dp(18),dp(18),Gravity.CENTER))
