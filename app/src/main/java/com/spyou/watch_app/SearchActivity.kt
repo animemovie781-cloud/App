@@ -6,6 +6,8 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognizerIntent
 import android.view.Gravity
 import android.view.inputmethod.EditorInfo
@@ -16,6 +18,15 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.ProgressBar
+import android.view.View
+import android.widget.ScrollView
+import org.json.JSONObject
+import org.json.JSONArray
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
+import coil.load
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.core.widget.addTextChangedListener
@@ -26,6 +37,12 @@ class SearchActivity : AppCompatActivity() {
     private lateinit var clear: ImageButton
     private lateinit var emptyLabel: TextView
     private val voiceRequest = 4207
+    private lateinit var resultsHost: LinearLayout
+    private lateinit var emptyIcon: ImageView
+    private lateinit var progress: ProgressBar
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var searchGeneration = 0
+    private var pendingSearch: Runnable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,7 +69,7 @@ class SearchActivity : AppCompatActivity() {
         val field = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
             background = pill(0xFF20212A.toInt(), 50); setPadding(dp(16), 0, dp(8), 0)
-            layoutParams = LinearLayout.LayoutParams(0, dp(72), 1f).apply { marginStart = dp(8) }
+            layoutParams = LinearLayout.LayoutParams(0, dp(52), 1f).apply { marginStart = dp(8) }
         }
         val searchIcon = ImageView(this).apply {
             setImageResource(R.drawable.search_field_icon); scaleType = ImageView.ScaleType.FIT_CENTER
@@ -92,14 +109,14 @@ class SearchActivity : AppCompatActivity() {
         val filter = ImageButton(this).apply {
             setImageResource(R.drawable.search_filter_tune); background = null
             scaleType = ImageView.ScaleType.FIT_CENTER; contentDescription = "Search filters"
-            layoutParams = LinearLayout.LayoutParams(dp(56), dp(56)).apply { marginStart = dp(12) }
+            layoutParams = LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginStart = dp(8) }
             setOnClickListener { showSearchOptions() }
         }
         top.addView(back); top.addView(field); top.addView(filter); root.addView(top)
 
         root.addView(android.view.View(this).apply {
             setBackgroundColor(0xFF1B1A20.toInt())
-            layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(80) }
+            layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) }
         })
         val empty = FrameLayout(this).apply { layoutParams = LinearLayout.LayoutParams(-1, 0, 1f) }
         val center = LinearLayout(this).apply {
