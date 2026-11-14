@@ -31,7 +31,9 @@ class DetailActivity : AppCompatActivity() {
  private var saved = false
  private var notified = false
  private var expanded = false
- private var listMode = false
+ private var listMode = true
+ private var newestFirst = true
+ private var episodeMetadata = JSONArray()
  private lateinit var titleText: TextView
  private lateinit var metaText: TextView
  private lateinit var overviewText: TextView
@@ -166,6 +168,18 @@ class DetailActivity : AppCompatActivity() {
     if(tabBar.childCount>0) tabBar.getChildAt(0).visibility=View.GONE
     refreshTabs(tabBar)
    }
+   if (!isAnimeMovie()) {
+    episodeMetadata = withContext(Dispatchers.IO) {
+     runCatching {
+      val service = EpisodeMetadataService(this@DetailActivity)
+      when (data.optString("mediaType")) {
+       "anime" -> service.loadAnime(data.optInt("malId"))
+       "tv" -> service.loadTmdbTv(data.optInt("id"), data.optInt("episodes"))
+       else -> JSONArray()
+      }
+     }.getOrElse { JSONArray() }
+    }
+   }
    renderTab()
   }
  }
@@ -237,16 +251,63 @@ class DetailActivity : AppCompatActivity() {
   val toggle=FrameLayout(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(panel)};setOnClickListener{listMode=!listMode;renderTab()}}
   toggle.addView(image(if(listMode)R.drawable.detail_grid_view else R.drawable.detail_list_view,20),FrameLayout.LayoutParams(dp(20),dp(20),Gravity.CENTER))
   heading.addView(toggle,LinearLayout.LayoutParams(dp(36),dp(36)).apply{rightMargin=dp(8)})
-  val more=FrameLayout(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(panel)};setOnClickListener{PopupMenu(this@DetailActivity,this).apply{menu.add("Newest first");menu.add("Oldest first");setOnMenuItemClickListener{toast(it.title.toString());true}}.show()}}
+  val more=FrameLayout(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(panel)};setOnClickListener{PopupMenu(this@DetailActivity,this).apply{menu.add("Newest first");menu.add("Oldest first");setOnMenuItemClickListener{
+    newestFirst = it.title.toString() == "Newest first"
+    renderTab()
+    true
+   }}.show()}}
   more.addView(image(R.drawable.detail_more,20),FrameLayout.LayoutParams(dp(20),dp(20),Gravity.CENTER))
   heading.addView(more,LinearLayout.LayoutParams(dp(36),dp(36)))
   episodeArea.addView(heading,LinearLayout.LayoutParams(-1,dp(54)).apply{topMargin=dp(8);bottomMargin=dp(10)})
+  val total = episodes().coerceAtLeast(1)
+  val rows = (1..total).map { n ->
+   (0 until episodeMetadata.length()).mapNotNull { episodeMetadata.optJSONObject(it) }
+    .firstOrNull { it.optInt("number") == n } ?: JSONObject().put("number", n).put("title", "Episode $n")
+  }.let { if (newestFirst) it.reversed() else it }
   if(listMode){
-   for(n in episodes() downTo 1){val row=TextView(this).apply{text="Episode $n";textSize=15f;setTextColor(Color.WHITE);gravity=Gravity.CENTER_VERTICAL;setPadding(dp(16),0,0,0);background=shape(panel,10f);setOnClickListener{toast("Episode $n: connect a source to play")}}
-    episodeArea.addView(row,LinearLayout.LayoutParams(-1,dp(54)).apply{bottomMargin=dp(8)})}
+   rows.forEach { ep ->
+    val n = ep.optInt("number")
+    val card = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0,0,0,dp(10)) }
+    val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+    val thumbFrame = FrameLayout(this).apply { background = shape(panel,9f); clipToOutline = true }
+    val thumb = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; setBackgroundColor(panel) }
+    val imageUrl = ep.optString("image")
+    if (imageUrl.startsWith("http")) thumb.load(imageUrl) { crossfade(true); allowHardware(false) }
+    else {
+     val fallback = listOf("cover","image","banner").firstNotNullOfOrNull { key -> data.optString(key).takeIf { it.startsWith("http") } }
+     if (fallback != null) thumb.load(fallback) { crossfade(true); allowHardware(false) }
+    }
+    thumbFrame.addView(thumb, FrameLayout.LayoutParams(-1,-1))
+    val play = ImageView(this).apply { setImageResource(R.drawable.detail_play); setColorFilter(Color.WHITE); alpha=.95f }
+    thumbFrame.addView(play, FrameLayout.LayoutParams(dp(20),dp(20),Gravity.CENTER))
+    val rating = ep.optDouble("rating")
+    if (rating > 0) {
+     val badge = label("★ %.1f".format(java.util.Locale.US,rating),10f,Color.WHITE,true).apply {
+      background = shape(0xCC111116.toInt(),5f); setPadding(dp(5),dp(3),dp(5),dp(3))
+     }
+     thumbFrame.addView(badge,FrameLayout.LayoutParams(-2,-2,Gravity.TOP or Gravity.START).apply { setMargins(dp(4),dp(4),0,0) })
+    }
+    top.addView(thumbFrame,LinearLayout.LayoutParams(dp(112),dp(68)).apply { rightMargin=dp(12) })
+    val info = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL }
+    val epTitle = ep.optString("title").takeIf { it.isNotBlank() && it!="null" } ?: "Episode $n"
+    info.addView(label("$n. $epTitle",15f,Color.WHITE,true).apply { maxLines=2; ellipsize=TextUtils.TruncateAt.END })
+    val runtime = ep.optInt("runtime")
+    val date = ep.optString("airDate").takeIf { it.isNotBlank() && it!="null" } ?: "Air date unavailable"
+    val runtimeText = if(runtime>0) "$runtime min" else "Runtime unavailable"
+    info.addView(label("$runtimeText  ·  $date",11.5f,secondary).apply { setPadding(0,dp(5),0,0); maxLines=2 })
+    top.addView(info,LinearLayout.LayoutParams(0,-2,1f))
+    val download = ImageView(this).apply { setImageResource(R.drawable.detail_download); setColorFilter(Color.WHITE); setOnClickListener { toast("No download source available for episode $n") } }
+    top.addView(download,LinearLayout.LayoutParams(dp(24),dp(24)).apply { leftMargin=dp(8) })
+    top.setOnClickListener { toast("Episode $n: connect a source to play") }
+    card.addView(top)
+    val description = ep.optString("overview").takeIf { it.isNotBlank() && it!="null" } ?: "Episode description unavailable."
+    card.addView(label(description,12.5f,secondary).apply { setPadding(0,dp(7),0,0); setTypeface(typeface,Typeface.ITALIC) })
+    episodeArea.addView(card,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=dp(8) })
+   }
   }else{
    val grid=GridLayout(this).apply{columnCount=5;useDefaultMargins=false}
-   for(n in episodes() downTo 1){
+   rows.forEach { ep ->
+    val n=ep.optInt("number")
     val tile=FrameLayout(this).apply{background=shape(panel,10f);setOnClickListener{toast("Episode $n: connect a source to play")}}
     tile.addView(label(n.toString(),15f,Color.WHITE,true).apply{gravity=Gravity.CENTER})
     grid.addView(tile,GridLayout.LayoutParams().apply{width=0;height=dp(56);columnSpec=GridLayout.spec(GridLayout.UNDEFINED,1f);setMargins(dp(4),dp(5),dp(4),dp(5))})
