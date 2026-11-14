@@ -67,7 +67,7 @@ class HomeFragment : Fragment() {
         binding.heroDetails.setOnClickListener {
             Toast.makeText(requireContext(), "Install a provider to open title details", Toast.LENGTH_SHORT).show()
         }
-        binding.scheduleCard.setOnClickListener { Toast.makeText(requireContext(), "Schedule & lists", Toast.LENGTH_SHORT).show() }
+        binding.scheduleCard.setOnClickListener { startActivity(android.content.Intent(requireContext(), ScheduleHubActivity::class.java)) }
         binding.genresCard.setOnClickListener { Toast.makeText(requireContext(), "Genres", Toast.LENGTH_SHORT).show() }
         binding.actionSearch.setOnClickListener { Toast.makeText(requireContext(), "Search", Toast.LENGTH_SHORT).show() }
         binding.actionDownloads.setOnClickListener { Toast.makeText(requireContext(), "Downloads", Toast.LENGTH_SHORT).show() }
