@@ -72,7 +72,14 @@ class DetailActivity : AppCompatActivity() {
   Regex("(?i)(?:season|s)\\s*[-:#]?\\s*(\\d+)").find(value)?.groupValues?.getOrNull(1)?.toIntOrNull()
    ?: Regex("(?i)(\\d+)(?:st|nd|rd|th)\\s+season").find(value)?.groupValues?.getOrNull(1)?.toIntOrNull()
  } ?: 1
- private fun episodes()=tmdbBundle?.episodes?.size?.takeIf{it>0} ?: if(aniListDetailsLoaded) episodeCount else data.optInt("episodes",0).takeIf{it>0} ?: 0
+ private fun knownEpisodeCount():Int {
+  val item=aniListItem ?: return episodeCount.coerceAtLeast(0)
+  var count=item.optInt("episodes",0)
+  val next=item.optJSONObject("nextAiringEpisode")?.optInt("episode",0) ?: 0
+  if(next>0) count=next-1
+  return count.coerceAtLeast(0)
+ }
+ private fun episodes()=tmdbBundle?.episodes?.size?.takeIf{it>0} ?: if(aniListDetailsLoaded) knownEpisodeCount() else data.optInt("episodes",0).takeIf{it>0} ?: 0
  private fun meta():String {
   val year=data.optString("year").takeIf{it.isNotBlank()&&it!="null"}?:"2026"
   val status=data.optString("status").takeIf{it.isNotBlank()&&it!="null"}?:"Ongoing"
@@ -476,7 +483,17 @@ class DetailActivity : AppCompatActivity() {
 
    val status=aniListItem?.optString("status").orEmpty()
    val isMovieTitle=aniListFormat.equals("MOVIE",true)
-   val shouldHaveEpisodes=!isMovieTitle && status!="NOT_YET_RELEASED" && episodeCount>0
+   val knownCount=knownEpisodeCount()
+   val shouldHaveEpisodes=!isMovieTitle && status!="NOT_YET_RELEASED" && knownCount>0
+   if(shouldHaveEpisodes && tmdbBundle==null){
+    // Paint numbered episode tiles from AniList immediately; AniZip fills titles,
+    // stills, ratings, runtime and air dates as soon as its parallel request returns.
+    val placeholders=(1..knownCount.coerceAtMost(500)).map{number->
+     TmdbEpisode(number,"Episode $number","",null,"",0,0.0)
+    }
+    tmdbBundle=TmdbDetailBundle("tv",0,emptyList(),emptyList(),JSONObject(),placeholders)
+    renderTab()
+   }
    if(!shouldHaveEpisodes){
     tmdbBundle=null
     tmdbError=null
@@ -518,7 +535,7 @@ class DetailActivity : AppCompatActivity() {
     return JSONObject(item.toString())
    }
   }
-  val liteFields="id idMal title{english romaji native} description(asHtml:false) episodes format seasonYear season status averageScore genres studios{nodes{name}} nextAiringEpisode{episode airingAt} staff(perPage:8){role node{name{full}}} countryOfOrigin startDate{year month day} endDate{year month day}"
+  val liteFields="id idMal title{english romaji native} description(asHtml:false) episodes format seasonYear season status averageScore genres studios{nodes{name}} nextAiringEpisode{episode airingAt} staff(perPage:8){edges{role node{name{full}}}} countryOfOrigin startDate{year month day} endDate{year month day}"
   val fullFields=liteFields+" source synonyms popularity favourites tags{name rank isMediaSpoiler} characters(page:1,perPage:30,sort:ROLE){edges{role node{id name{full} image{large}} voiceActors(language:JAPANESE){id name{full} image{large}}}} relations{edges{relationType(version:2) node{id type format title{english romaji native} coverImage{large} startDate{year}}}}"
   val query="query(\$id:Int!){Media(id:\$id){${if(full)fullFields else liteFields}}}"
   val body=JSONObject().put("query",query).put("variables",JSONObject().put("id",id))
