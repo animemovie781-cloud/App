@@ -26,7 +26,10 @@ class DetailActivity : AppCompatActivity() {
  private lateinit var data: JSONObject
  private lateinit var content: LinearLayout
  private lateinit var episodeArea: LinearLayout
+ private lateinit var tabsContainer: LinearLayout
  private var selectedTab = "Episodes"
+ private var aniListFormat = ""
+ private fun isMovie(): Boolean = data.optString("mediaType") == "movie" || data.optString("format").equals("MOVIE", true) || aniListFormat.equals("MOVIE", true)
  private var saved = false
  private var notified = false
  private var expanded = false
@@ -59,7 +62,7 @@ class DetailActivity : AppCompatActivity() {
  private fun meta():String {
   val year=data.optString("year").takeIf{it.isNotBlank()&&it!="null"}?:"2026"
   val status=data.optString("status").takeIf{it.isNotBlank()&&it!="null"}?:"Ongoing"
-  val count=episodes().let{if(it>0) "$it Episodes" else "Episodes TBA"}
+  val count=if(isMovie()) "Movie" else episodes().let{if(it>0) "$it Episodes" else "Episodes TBA"}
   return "$year  ·  $count  ·  $status"
  }
  private fun label(s:String,size:Float=15f,color:Int=Color.WHITE,bold:Boolean=false)=TextView(this).apply{
@@ -78,6 +81,7 @@ class DetailActivity : AppCompatActivity() {
   window.statusBarColor=bg;window.navigationBarColor=bg
   data=runCatching{JSONObject(intent.getStringExtra(EXTRA_ITEM).orEmpty())}.getOrElse{JSONObject()}
   selectedSeason = detectSeasonNumber(data.optString("title"), data.optString("season")).coerceAtLeast(1)
+  if(isMovie()) selectedTab = "Cast"
   val scroll=ScrollView(this).apply{setBackgroundColor(bg);isFillViewport=true;clipToPadding=false}
   content=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(16),0,dp(16),dp(28))}
   // Expanded 320dp artwork with bottom scrim and floating back control.
@@ -138,15 +142,9 @@ class DetailActivity : AppCompatActivity() {
    actions.addView(cell)
   }
   content.addView(actions)
-  val tabs=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
-  listOf("Episodes","Cast","Relations","Details").forEach{tab->
-   val cell=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_HORIZONTAL;layoutParams=LinearLayout.LayoutParams(-2,-2).apply{rightMargin=dp(22)}}
-   cell.addView(label(tab,15f,if(tab==selectedTab)red else secondary,tab==selectedTab).apply{setPadding(0,dp(10),0,dp(10));setOnClickListener{selectedTab=tab;refreshTabs(tabs);renderTab()}})
-   val underline=View(this).apply{tag=tab;background=shape(red,2f);visibility=if(tab==selectedTab)View.VISIBLE else View.INVISIBLE}
-   cell.addView(underline,LinearLayout.LayoutParams(dp(if(tab=="Episodes")58 else tab.length*8),dp(3)))
-   tabs.addView(cell)
-  }
-  content.addView(tabs)
+  tabsContainer=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
+  rebuildTabs()
+  content.addView(tabsContainer)
   episodeArea=LinearLayout(this).apply{orientation=1}
   content.addView(episodeArea)
   scroll.addView(content);setContentView(scroll);renderTab();loadTmdbDetails()
@@ -156,6 +154,18 @@ class DetailActivity : AppCompatActivity() {
   row.addView(ImageView(this).apply{setImageResource(iconId);setColorFilter(textColor);scaleType=ImageView.ScaleType.FIT_CENTER},LinearLayout.LayoutParams(dp(24),dp(24)))
   row.addView(label(caption,16f,textColor,true).apply{setPadding(dp(10),0,0,0)})
   return row.apply{layoutParams=LinearLayout.LayoutParams(-1,dp(52))}
+ }
+ private fun rebuildTabs(){
+  tabsContainer.removeAllViews()
+  val visibleTabs = if(isMovie()) listOf("Cast","Relations","Details") else listOf("Episodes","Cast","Relations","Details")
+  if(selectedTab !in visibleTabs) selectedTab = visibleTabs.first()
+  visibleTabs.forEach{tab->
+   val cell=LinearLayout(this).apply{orientation=1;gravity=Gravity.CENTER_HORIZONTAL;layoutParams=LinearLayout.LayoutParams(-2,-2).apply{rightMargin=dp(22)}}
+   cell.addView(label(tab,15f,if(tab==selectedTab)red else secondary,tab==selectedTab).apply{setPadding(0,dp(10),0,dp(10));setOnClickListener{selectedTab=tab;refreshTabs(tabsContainer);renderTab()}})
+   val underline=View(this).apply{tag=tab;background=shape(red,2f);visibility=if(tab==selectedTab)View.VISIBLE else View.INVISIBLE}
+   cell.addView(underline,LinearLayout.LayoutParams(dp(if(tab=="Episodes")58 else tab.length*8),dp(3)))
+   tabsContainer.addView(cell)
+  }
  }
  private fun refreshTabs(tabs:LinearLayout){
   for(i in 0 until tabs.childCount){val cell=tabs.getChildAt(i) as LinearLayout;val name=(cell.getChildAt(0) as TextView).text.toString();val active=name==selectedTab
@@ -321,7 +331,7 @@ class DetailActivity : AppCompatActivity() {
     applyDetailMetadata(detailData)
     val result=withContext(Dispatchers.IO){
      val kind=data.optString("mediaType")
-     if(kind=="anime" || kind=="manga" || kind=="novel" || kind.isBlank()) TmdbDetailRepository().load(title(),"tv","",selectedSeason,selectedEpisode)
+     if(kind=="anime" || kind=="manga" || kind=="novel" || kind.isBlank()) TmdbDetailRepository().load(title(),if(aniListFormat.equals("MOVIE",true)) "movie" else "tv","",selectedSeason,selectedEpisode)
      else TmdbDetailRepository().load(title(),kind,data.optString("id"),selectedSeason,selectedEpisode)
     }
     tmdbBundle = if (data.optString("mediaType") == "anime" && aniListMalId != null) {
@@ -340,7 +350,7 @@ class DetailActivity : AppCompatActivity() {
   val kind=data.optString("mediaType")
   val id=data.optString("id").toIntOrNull() ?: return null
   if(kind !in listOf("anime","manga","novel")) return null
-  val query="query(\$id:Int!){Media(id:\$id){id idMal title{english romaji native} description(asHtml:false) episodes seasonYear status genres studios{nodes{name}} staff{edges{role node{name{full}}}}}}"
+  val query="query(\$id:Int!){Media(id:\$id){id idMal title{english romaji native} description(asHtml:false) episodes format seasonYear status genres studios{nodes{name}} staff{edges{role node{name{full}}}}}}"
   val body=JSONObject().put("query",query).put("variables",JSONObject().put("id",id))
   val connection=java.net.URL("https://graphql.anilist.co").openConnection() as java.net.HttpURLConnection
   connection.requestMethod="POST";connection.connectTimeout=7000;connection.readTimeout=10000;connection.doOutput=true
@@ -369,7 +379,9 @@ class DetailActivity : AppCompatActivity() {
   }.distinct().take(5).joinToString(" · ")}.orEmpty()
   episodeCount=item.optInt("episodes",0).takeIf{it>0}?:0
   aniListMalId=item.optInt("idMal",0).takeIf{it>0}
+  aniListFormat=item.optString("format")
   aniListDetailsLoaded=true
+  if(isMovie()) { selectedTab="Cast"; rebuildTabs() }
   if(item.optInt("seasonYear")>0) data.put("year",item.optInt("seasonYear").toString())
   if(item.optString("status").isNotBlank()) data.put("status",item.optString("status"))
   data.put("description",description).put("genres",genres).put("creators",creators)
