@@ -208,8 +208,15 @@ class DetailActivity : AppCompatActivity() {
   more.addView(image(R.drawable.detail_more,20),FrameLayout.LayoutParams(dp(20),dp(20),Gravity.CENTER))
   heading.addView(more,LinearLayout.LayoutParams(dp(36),dp(36)))
   episodeArea.addView(heading,LinearLayout.LayoutParams(-1,dp(54)).apply{topMargin=dp(8);bottomMargin=dp(10)})
+  val aniStatus = aniListItem?.optString("status").orEmpty()
+  if (aniListDetailsLoaded && (aniStatus == "NOT_YET_RELEASED" || episodeCount <= 0)) {
+   val message = if (aniStatus == "NOT_YET_RELEASED") "Episodes will appear here when this anime starts airing."
+                 else "Episode information is not available yet."
+   episodeArea.addView(label(message,14f,secondary).apply{setPadding(0,dp(8),0,dp(12))})
+   return
+  }
   if(tmdbLoading && tmdbBundle==null){
-   episodeArea.addView(label("Loading episode details from TMDB…",14f,secondary).apply{setPadding(0,dp(8),0,dp(12))})
+   episodeArea.addView(label("Loading episode details…",14f,secondary).apply{setPadding(0,dp(8),0,dp(12))})
    return
   }
   if(tmdbBundle==null || tmdbBundle?.episodes.isNullOrEmpty()){
@@ -391,15 +398,38 @@ class DetailActivity : AppCompatActivity() {
   episodeArea.addView(rows,LinearLayout.LayoutParams(-1,-2))
  }
  private fun loadTmdbDetails(){
-  tmdbLoading=true;tmdbError=null;renderTab()
-  lifecycleScope.launch{
-   try{
-    val detailData=withContext(Dispatchers.IO){loadAniListDetailIfNeeded()}
+  if (tmdbLoading) return
+  tmdbLoading=true
+  tmdbError=null
+  renderTab()
+  lifecycleScope.launch {
+   val isAniListTitle = data.optString("mediaType") in listOf("anime","manga","novel") ||
+       (data.optString("mediaType").isBlank() && data.optString("id").toIntOrNull()!=null)
+   try {
+    // AniList is the primary source for anime. Render its metadata immediately;
+    // do not wait for the slower TMDB multi-endpoint lookup before showing tabs.
+    val detailData = withContext(Dispatchers.IO) { loadAniListDetailIfNeeded() }
     applyDetailMetadata(detailData)
-    val result=withContext(Dispatchers.IO){
-     val kind=data.optString("mediaType")
-     if(kind=="anime" || kind=="manga" || kind=="novel" || kind.isBlank()) TmdbDetailRepository().load(title(),if(aniListFormat.equals("MOVIE",true)) "movie" else "tv","",selectedSeason,selectedEpisode)
-     else TmdbDetailRepository().load(title(),kind,data.optString("id"),selectedSeason,selectedEpisode)
+    if (isAniListTitle) {
+     tmdbLoading = false
+     renderTab()
+     val status = aniListItem?.optString("status").orEmpty()
+     // Upcoming titles and AniList movies have no season episode list to resolve.
+     if (aniListFormat.equals("MOVIE", true) || status == "NOT_YET_RELEASED" || episodeCount <= 0) {
+      tmdbBundle = null
+      tmdbError = null
+      return@launch
+     }
+     // AniList already powers Cast, Relations and Details; only fetch TMDB
+     // episode enrichment in the background for released/airing series.
+     tmdbLoading = true
+     if (selectedTab != "Episodes") renderTab()
+    }
+    val result = withContext(Dispatchers.IO) {
+     val kind = data.optString("mediaType")
+     if (kind=="anime" || kind=="manga" || kind=="novel" || kind.isBlank())
+      TmdbDetailRepository().load(title(), if(aniListFormat.equals("MOVIE",true)) "movie" else "tv", "", selectedSeason, selectedEpisode)
+     else TmdbDetailRepository().load(title(), kind, data.optString("id"), selectedSeason, selectedEpisode)
     }
     tmdbBundle = if (data.optString("mediaType") == "anime" && aniListMalId != null) {
      val enriched = withContext(Dispatchers.IO) {
@@ -407,9 +437,12 @@ class DetailActivity : AppCompatActivity() {
      }
      result.copy(episodes = enriched)
     } else result
-   }catch(error:Exception){tmdbError=error.message ?: "TMDB request failed"}
-   tmdbLoading=false
-   renderTab()
+   } catch (error: Exception) {
+    tmdbError = error.message ?: "Metadata request failed"
+   } finally {
+    tmdbLoading = false
+    renderTab()
+   }
   }
  }
 
@@ -420,7 +453,7 @@ class DetailActivity : AppCompatActivity() {
   val query="query(\$id:Int!){Media(id:\$id){id idMal title{english romaji native} description(asHtml:false) episodes format seasonYear season status averageScore source genres studios{nodes{name}} staff{edges{role node{name{full}}}} characters(page:1,perPage:30,sort:ROLE){edges{role node{id name{full} image{large}} voiceActors(language:JAPANESE){id name{full} image{large}}}} relations{edges{relationType(version:2) node{id type format title{english romaji native} coverImage{large} startDate{year}}}} countryOfOrigin synonyms popularity favourites tags{name rank isMediaSpoiler} startDate{year month day} endDate{year month day}}}"
   val body=JSONObject().put("query",query).put("variables",JSONObject().put("id",id))
   val connection=java.net.URL("https://graphql.anilist.co").openConnection() as java.net.HttpURLConnection
-  connection.requestMethod="POST";connection.connectTimeout=7000;connection.readTimeout=10000;connection.doOutput=true
+  connection.requestMethod="POST";connection.connectTimeout=4500;connection.readTimeout=6500;connection.doOutput=true
   connection.setRequestProperty("Content-Type","application/json");connection.setRequestProperty("Accept","application/json")
   connection.outputStream.use{it.write(body.toString().toByteArray(Charsets.UTF_8))}
   val status=connection.responseCode
