@@ -9,8 +9,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Zangetsu"
         android:usesCleartextTraffic="false">
-        <activity android:name=".ScheduleActivity" android:exported="false" />
-        <activity android:name=".ScheduleHubActivity" android:exported="false" />
         <activity android:name=".DetailActivity" android:exported="false" />
         <activity android:name=".CrashReportActivity" android:exported="false" />
         <activity android:name=".OnboardingActivity" android:exported="false" />

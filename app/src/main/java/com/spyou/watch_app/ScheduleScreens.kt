@@ -13,6 +13,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import coil.load
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -198,9 +200,11 @@ class ScheduleActivity : AppCompatActivity() {
         loading.visibility = if (anime.isEmpty() && tab == 0) View.VISIBLE else View.GONE
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
-                val a = runCatching { fetchAniList() }.getOrDefault(emptyList())
-                val v = runCatching { fetchTmdb() }.getOrDefault(emptyList())
-                a to v
+                coroutineScope {
+                    val a = async { runCatching { fetchAniList() }.getOrDefault(emptyList()) }
+                    val v = async { runCatching { fetchTmdb() }.getOrDefault(emptyList()) }
+                    a.await() to v.await()
+                }
             }
             anime = result.first; video = result.second
             failed = anime.isEmpty() && video.isEmpty()
