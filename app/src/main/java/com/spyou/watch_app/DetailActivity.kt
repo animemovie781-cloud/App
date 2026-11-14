@@ -290,7 +290,7 @@ class DetailActivity : AppCompatActivity() {
   val kind=data.optString("mediaType")
   val id=data.optString("id").toIntOrNull() ?: return null
   if(kind !in listOf("anime","manga","novel")) return null
-  val query="query(\\$id:Int!){Media(id:\\$id){id title{english romaji native} description(asHtml:false) episodes seasonYear status genres studios{nodes{name}} staff{edges{role node{name{full}}}}}}"
+  val query="query(\$id:Int!){Media(id:\$id){id title{english romaji native} description(asHtml:false) episodes seasonYear status genres studios{nodes{name}} staff{edges{role node{name{full}}}}}}"
   val body=JSONObject().put("query",query).put("variables",JSONObject().put("id",id))
   val connection=java.net.URL("https://graphql.anilist.co").openConnection() as java.net.HttpURLConnection
   connection.requestMethod="POST";connection.connectTimeout=7000;connection.readTimeout=10000;connection.doOutput=true
