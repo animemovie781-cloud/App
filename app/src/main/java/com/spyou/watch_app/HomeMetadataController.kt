@@ -639,6 +639,6 @@ class HomeMetadataController(
 
     companion object {
         // Exact TMDB v3 key embedded by the original Dart Tmdb.apiKey.
-        private const val TMDB_API_KEY = "fab792d6c5936a7332045ca4565c7353"
+        private val TMDB_API_KEY = TmdbConfig.API_KEY
     }
 }
