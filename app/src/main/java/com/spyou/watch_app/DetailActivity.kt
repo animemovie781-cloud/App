@@ -260,12 +260,14 @@ class DetailActivity : AppCompatActivity() {
   }
  }
  private fun renderCastTab(){
-  val heading=label("Episode $selectedEpisode Cast",20f,Color.WHITE,true)
+  val headingText = if(isMovie()) "Movie Cast" else "Episode $selectedEpisode Cast"
+  val heading=label(headingText,20f,Color.WHITE,true)
   episodeArea.addView(heading,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(18);bottomMargin=dp(12)})
   if(tmdbLoading){episodeArea.addView(label("Loading cast from TMDB…",14f,secondary));return}
   val cast=tmdbBundle?.cast.orEmpty()
   if(cast.isEmpty()){
-   episodeArea.addView(label(tmdbError ?: "No cast information available for this episode.",14f,secondary));return
+   val emptyMessage = if(isMovie()) "No movie cast information available." else "No cast information available for this episode."
+   episodeArea.addView(label(tmdbError ?: emptyMessage,14f,secondary));return
   }
   val scroller=HorizontalScrollView(this).apply{isHorizontalScrollBarEnabled=false;clipToPadding=false}
   val rail=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
