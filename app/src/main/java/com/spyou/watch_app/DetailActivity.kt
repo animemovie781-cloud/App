@@ -31,6 +31,7 @@ class DetailActivity : AppCompatActivity() {
  private var notified = false
  private var expanded = false
  private var listMode = false
+ private var newestFirst = true
  private var selectedSeason = 1
  private var selectedEpisode = 1
  private var tmdbLoading = false
@@ -171,7 +172,22 @@ class DetailActivity : AppCompatActivity() {
   val toggle=FrameLayout(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(panel)};setOnClickListener{listMode=!listMode;renderTab()}}
   toggle.addView(image(if(listMode)R.drawable.detail_grid_view else R.drawable.detail_list_view,20),FrameLayout.LayoutParams(dp(20),dp(20),Gravity.CENTER))
   heading.addView(toggle,LinearLayout.LayoutParams(dp(36),dp(36)).apply{rightMargin=dp(8)})
-  val more=FrameLayout(this).apply{background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(panel)};setOnClickListener{PopupMenu(this@DetailActivity,this).apply{menu.add("Newest first");menu.add("Oldest first");setOnMenuItemClickListener{toast(it.title.toString());true}}.show()}}
+  val more=FrameLayout(this).apply{
+   background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(panel)}
+   setOnClickListener{
+    PopupMenu(this@DetailActivity,this).apply{
+     val newest=menu.add("Newest first")
+     val oldest=menu.add("Oldest first")
+     newest.isCheckable=true;oldest.isCheckable=true
+     newest.isChecked=newestFirst;oldest.isChecked=!newestFirst
+     setOnMenuItemClickListener{item->
+      val nextNewest=item.title.toString()=="Newest first"
+      if(newestFirst!=nextNewest){newestFirst=nextNewest;renderTab()}
+      true
+     }
+    }.show()
+   }
+  }
   more.addView(image(R.drawable.detail_more,20),FrameLayout.LayoutParams(dp(20),dp(20),Gravity.CENTER))
   heading.addView(more,LinearLayout.LayoutParams(dp(36),dp(36)))
   episodeArea.addView(heading,LinearLayout.LayoutParams(-1,dp(54)).apply{topMargin=dp(8);bottomMargin=dp(10)})
@@ -179,8 +195,9 @@ class DetailActivity : AppCompatActivity() {
    episodeArea.addView(label("Episode information has not been announced yet.",14f,secondary).apply{setPadding(0,dp(8),0,dp(12))})
    return
   }
+  val episodeNumbers=(1..episodes()).let{if(newestFirst) it.reversed() else it}
   if(listMode){
-   for(n in episodes() downTo 1){
+   for(n in episodeNumbers){
     val row=TextView(this).apply{
      text="Episode $n";textSize=15f;setTextColor(Color.WHITE);gravity=Gravity.CENTER_VERTICAL
      setPadding(dp(16),0,0,0);background=shape(if(n==selectedEpisode)0xFF343541.toInt() else panel,10f)
@@ -190,7 +207,7 @@ class DetailActivity : AppCompatActivity() {
    }
   }else{
    val grid=GridLayout(this).apply{columnCount=5;useDefaultMargins=false}
-   for(n in episodes() downTo 1){
+   for(n in episodeNumbers){
     val tile=FrameLayout(this).apply{
      background=shape(if(n==selectedEpisode)0xFF343541.toInt() else panel,10f)
      setOnClickListener{selectedEpisode=n;renderTab();loadTmdbDetails()}
