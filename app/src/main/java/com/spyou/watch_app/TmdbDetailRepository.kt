@@ -62,18 +62,34 @@ internal class TmdbDetailRepository {
         } else {
             "/movie/$id/credits"
         }
-        var credits = runCatching { request(creditsPath) }
-            .getOrElse { request("/$type/$id/credits") }
-        if (parseCast(credits.optJSONArray("cast")).isEmpty() && type == "tv") {
-            credits = runCatching { request("/tv/$id/credits") }.getOrDefault(credits)
-        }
+        // Keep episode cast scoped to the selected episode; do not silently replace it with series-wide cast.
+        val credits = runCatching { request(creditsPath) }
+            .getOrElse { JSONObject() }
         val cast = parseCast(credits.optJSONArray("cast"))
         val recommendations = runCatching { request("/$type/$id/recommendations") }.getOrDefault(JSONObject())
         val similar = runCatching { request("/$type/$id/similar") }.getOrDefault(JSONObject())
         val relations = mergeResults(recommendations.optJSONArray("results"), similar.optJSONArray("results"), type)
-        val seasonData = if (type == "tv") runCatching { request("/tv/$id/season/$season") }.getOrDefault(JSONObject()) else JSONObject()
+        val seasonData = if (type == "tv") {
+            val available = details.optJSONArray("seasons")
+            val seasonEntry = available?.let { array ->
+                (0 until array.length()).mapNotNull { array.optJSONObject(it) }
+                    .firstOrNull { it.optInt("season_number", -1) == season && it.optInt("episode_count", 0) > 0 }
+            }
+            if (seasonEntry == null) {
+                val availableNumbers = available?.let { array ->
+                    (0 until array.length()).mapNotNull { array.optJSONObject(it)?.optInt("season_number") }
+                        .filter { it > 0 }.joinToString(", ")
+                }.orEmpty()
+                throw IllegalStateException("TMDB does not have Season $season episode data for this title. Available seasons: ${availableNumbers.ifBlank { "not listed" }}.")
+            }
+            request("/tv/$id/season/$season")
+        } else JSONObject()
         val episodeArray = seasonData.optJSONArray("episodes")
-        val episodeItems = if (episodeArray == null) emptyList() else (0 until episodeArray.length()).mapNotNull { index ->
+            ?: throw IllegalStateException("TMDB returned no episode list for Season $season.")
+        if (type == "tv" && episodeArray.length() == 0) {
+            throw IllegalStateException("TMDB Season $season currently has no episode records.")
+        }
+        val episodeItems = (0 until episodeArray.length()).mapNotNull { index ->
             val item = episodeArray.optJSONObject(index) ?: return@mapNotNull null
             val number = item.optInt("episode_number", 0)
             if (number <= 0) return@mapNotNull null
