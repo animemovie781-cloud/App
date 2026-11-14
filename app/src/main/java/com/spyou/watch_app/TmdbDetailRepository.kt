@@ -92,10 +92,16 @@ internal class TmdbDetailRepository {
         if (explicitId != null && explicitId > 0 && normalizedType in listOf("tv", "movie")) {
             return normalizedType to explicitId
         }
-        val query = URLEncoder.encode(title, "UTF-8")
+        // Catalogue titles can append a season suffix; TMDB search needs the base series title.
+        val baseTitle = title
+            .replace(Regex("(?i)\\s+(?:season|s)\\s*[-:#]?\\s*\\d+.*$"), "")
+            .replace(Regex("(?i)\\s+\\d+(?:st|nd|rd|th)\\s+season.*$"), "")
+            .trim()
+            .ifBlank { title }
+        val query = URLEncoder.encode(baseTitle, "UTF-8")
         val searchType = if (normalizedType == "movie") "movie" else "tv"
         val results = request("/search/$searchType?query=$query").optJSONArray("results") ?: JSONArray()
-        val wanted = normalize(title)
+        val wanted = normalize(baseTitle)
         var best: JSONObject? = null
         var bestScore = -1
         for (i in 0 until results.length()) {
