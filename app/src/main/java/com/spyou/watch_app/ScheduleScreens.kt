@@ -109,6 +109,8 @@ class ScheduleActivity : AppCompatActivity() {
     private lateinit var indicator: View
     private lateinit var loading: TextView
     private var failed = false
+    private var animeFailed = false
+    private var videoFailed = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -176,7 +178,7 @@ class ScheduleActivity : AppCompatActivity() {
 
     private fun selectTab(value: Int) {
         if (tab == value) return
-        tab = value; myList = false; filter.text = "☷  All  ⌄"
+        tab = value; myList = false; failed = if (tab == 0) animeFailed else videoFailed; filter.text = "☷  All  ⌄"
         animeTab.setTextColor(if (tab == 0) SCH_WHITE else SCH_MUTED)
         videoTab.setTextColor(if (tab == 1) SCH_WHITE else SCH_MUTED)
         indicator.animate().translationX(if (tab == 0) 0f else dp(85).toFloat()).setDuration(220).setInterpolator(DecelerateInterpolator()).start()
@@ -199,6 +201,8 @@ class ScheduleActivity : AppCompatActivity() {
     private fun refresh() {
         loading.visibility = if (anime.isEmpty() && tab == 0) View.VISIBLE else View.GONE
         lifecycleScope.launch {
+            val cachedAnime = anime
+            val cachedVideo = video
             val result = withContext(Dispatchers.IO) {
                 coroutineScope {
                     val a = async { runCatching { fetchAniList() }.getOrDefault(emptyList()) }
@@ -206,8 +210,13 @@ class ScheduleActivity : AppCompatActivity() {
                     a.await() to v.await()
                 }
             }
-            anime = result.first; video = result.second
-            failed = anime.isEmpty() && video.isEmpty()
+            // A temporary AniList outage/rate limit must never erase the last
+            // usable schedule snapshot restored from local cache.
+            anime = result.first.ifEmpty { cachedAnime }
+            video = result.second.ifEmpty { cachedVideo }
+            animeFailed = result.first.isEmpty() && cachedAnime.isEmpty()
+            videoFailed = result.second.isEmpty() && cachedVideo.isEmpty()
+            failed = if (tab == 0) animeFailed else videoFailed
             saveCache(); loading.visibility = View.GONE
             renderDays(); renderRows(true)
         }
