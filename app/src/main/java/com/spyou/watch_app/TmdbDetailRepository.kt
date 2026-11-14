@@ -51,9 +51,11 @@ internal class TmdbDetailRepository {
         } else {
             "/movie/$id/credits"
         }
-        val credits = runCatching { request(creditsPath) }
-            .recoverCatching { request("/$type/$id/credits") }
-            .getOrDefault(JSONObject())
+        var credits = runCatching { request(creditsPath) }
+            .getOrElse { request("/$type/$id/credits") }
+        if (parseCast(credits.optJSONArray("cast")).isEmpty() && type == "tv") {
+            credits = runCatching { request("/tv/$id/credits") }.getOrDefault(credits)
+        }
         val cast = parseCast(credits.optJSONArray("cast"))
         val recommendations = runCatching { request("/$type/$id/recommendations") }.getOrDefault(JSONObject())
         val similar = runCatching { request("/$type/$id/similar") }.getOrDefault(JSONObject())
