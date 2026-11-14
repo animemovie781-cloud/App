@@ -174,7 +174,7 @@ class DetailActivity : AppCompatActivity() {
    contentDescription=if(listMode) "Switch to thumbnail view" else "Switch to simple list"
    setOnClickListener{listMode=!listMode;renderTab()}
   }
-  toggle.addView(image(if(listMode)R.drawable.detail_grid_view else R.drawable.detail_list_view,20),FrameLayout.LayoutParams(dp(20),dp(20),Gravity.CENTER))
+  toggle.addView(image(if(listMode)R.drawable.detail_list_view else R.drawable.detail_grid_view,20),FrameLayout.LayoutParams(dp(20),dp(20),Gravity.CENTER))
   heading.addView(toggle,LinearLayout.LayoutParams(dp(36),dp(36)).apply{rightMargin=dp(8)})
   val more=FrameLayout(this).apply{
    background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(panel)}
@@ -193,10 +193,21 @@ class DetailActivity : AppCompatActivity() {
   val episodeMap=tmdbBundle?.episodes.orEmpty().associateBy{it.number}
   val numbers=(1..episodes()).let{if(newestFirst)it.reversed() else it}
   if(listMode){
-   numbers.forEach{n->
-    val row=TextView(this).apply{text="Episode $n";textSize=15f;setTextColor(Color.WHITE);gravity=Gravity.CENTER_VERTICAL;setPadding(dp(16),0,0,0);background=shape(if(n==selectedEpisode)0xFF343541.toInt() else panel,10f);setOnClickListener{selectedEpisode=n;renderTab();loadTmdbDetails()}}
-    episodeArea.addView(row,LinearLayout.LayoutParams(-1,dp(54)).apply{bottomMargin=dp(8)})
+   val grid=GridLayout(this).apply{columnCount=5;useDefaultMargins=false}
+   numbers.forEachIndexed{index,n->
+    val tile=TextView(this).apply{
+     text=n.toString();textSize=15f;setTextColor(if(n==selectedEpisode)Color.WHITE else Color.WHITE)
+     typeface=Typeface.create("sans-serif",Typeface.BOLD);gravity=Gravity.CENTER
+     background=shape(if(n==selectedEpisode)0xFFE5093A.toInt() else panel,10f)
+     setOnClickListener{selectedEpisode=n;renderTab();loadTmdbDetails()}
+     contentDescription="Episode $n"
+    }
+    val lp=GridLayout.LayoutParams(
+     GridLayout.spec(index/5,1f),GridLayout.spec(index%5,1f)
+    ).apply{width=0;height=dp(58);setMargins(dp(4),dp(5),dp(4),dp(5))}
+    grid.addView(tile,lp)
    }
+   episodeArea.addView(grid,LinearLayout.LayoutParams(-1,-2).apply{leftMargin=dp(12);rightMargin=dp(12)})
   }else{
    numbers.forEach{n->
     val ep=episodeMap[n]
