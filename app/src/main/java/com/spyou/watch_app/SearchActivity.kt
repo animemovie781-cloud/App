@@ -118,22 +118,15 @@ class SearchActivity : AppCompatActivity() {
             setBackgroundColor(0xFF1B1A20.toInt())
             layoutParams = LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16) }
         })
-        val empty = FrameLayout(this).apply { layoutParams = LinearLayout.LayoutParams(-1, 0, 1f) }
-        val center = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-            layoutParams = FrameLayout.LayoutParams(-1, -2, Gravity.CENTER)
-            translationY = -dp(12).toFloat()
-        }
-        center.addView(ImageView(this).apply {
-            setImageResource(R.drawable.search_empty_state); scaleType = ImageView.ScaleType.FIT_CENTER
-            layoutParams = LinearLayout.LayoutParams(dp(72), dp(72)).apply { bottomMargin = dp(26) }
-            contentDescription = "Search"
-        })
-        emptyLabel = TextView(this).apply {
-            text = "Search for something to watch"; setTextColor(0xFFA7A7B2.toInt())
-            textSize = 16f; gravity = Gravity.CENTER; letterSpacing = 0.015f
-        }
-        center.addView(emptyLabel); empty.addView(center); root.addView(empty)
+        val contentFrame = FrameLayout(this).apply { layoutParams = LinearLayout.LayoutParams(-1, 0, 1f) }
+        val center = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; layoutParams = FrameLayout.LayoutParams(-1, -2, Gravity.CENTER) }
+        emptyIcon = ImageView(this).apply { setImageResource(R.drawable.search_empty_state); scaleType = ImageView.ScaleType.FIT_CENTER; layoutParams = LinearLayout.LayoutParams(dp(64), dp(64)).apply { bottomMargin = dp(22) }; contentDescription = "Search" }
+        emptyLabel = TextView(this).apply { text = "Search for something to watch"; setTextColor(0xFFA7A7B2.toInt()); textSize = 16f; gravity = Gravity.CENTER; letterSpacing = 0.015f }
+        progress = ProgressBar(this).apply { visibility = View.GONE }
+        center.addView(emptyIcon); center.addView(progress); center.addView(emptyLabel); contentFrame.addView(center)
+        val scroll = ScrollView(this).apply { visibility = View.GONE; isFillViewport = true; overScrollMode = View.OVER_SCROLL_NEVER }
+        resultsHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(28)) }
+        scroll.addView(resultsHost); contentFrame.addView(scroll); root.addView(contentFrame)
         return root
     }
 
