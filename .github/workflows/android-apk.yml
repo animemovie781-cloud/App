@@ -38,8 +38,9 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      # GitHub-hosted Ubuntu runners already include Android command-line
-      # tools. Install only the SDK packages required by compileSdk 35.
+      # Ubuntu GitHub runners include Android command-line tools and
+      # pre-accepted SDK licenses. Do not pipe "yes" into --licenses:
+      # sdkmanager exits early when licenses are already accepted.
       - name: Install Android SDK packages
         shell: bash
         run: |
@@ -47,9 +48,11 @@ jobs:
           if [[ ! -x "$SDKMANAGER" ]]; then
             SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
           fi
-          test -x "$SDKMANAGER"
-          yes | "$SDKMANAGER" --licenses >/dev/null
-          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          if [[ ! -x "$SDKMANAGER" ]]; then
+            echo "Android sdkmanager not found under $ANDROID_HOME/cmdline-tools"
+            exit 1
+          fi
+          "$SDKMANAGER" --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
