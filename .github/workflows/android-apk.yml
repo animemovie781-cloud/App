@@ -1,31 +1,28 @@
-name: Android APK Build
+name: Android APK Build and Release
 
 on:
   push:
-    branches: [main]
-    paths:
-      - "**.kt"
-      - "**.java"
-      - "**.xml"
-      - "**.kts"
-      - "gradle.properties"
-      - ".github/workflows/android-apk.yml"
+    branches:
+      - main
+    tags:
+      - "v*"
   pull_request:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: android-apk-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-debug-apk:
-    name: Build debug APK
+  build-apk:
+    name: Build Android APK
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - name: Checkout source
@@ -36,16 +33,17 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+          cache: gradle
 
-      # The repository currently has no Gradle wrapper, so install the
-      # compatible Gradle distribution directly. Add a checked-in wrapper
-      # in a later phase for fully reproducible builds.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
 
-      - name: Validate project files
+      - name: Validate Android project
         run: |
           test -f settings.gradle.kts
           test -f build.gradle.kts
@@ -55,10 +53,34 @@ jobs:
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace :app:assembleDebug
 
-      - name: Upload debug APK
+      - name: Prepare APK
+        shell: bash
+        run: |
+          APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK_PATH"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            APK_NAME="Zangetsu-${GITHUB_REF_NAME}.apk"
+          else
+            APK_NAME="Zangetsu-debug-${GITHUB_RUN_NUMBER}.apk"
+          fi
+          mkdir -p release-assets
+          cp "$APK_PATH" "release-assets/$APK_NAME"
+          echo "APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
+
+      - name: Upload APK build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zangetsu-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: zangetsu-apk-${{ github.run_number }}
+          path: release-assets/*.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
+
+      - name: Publish APK to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Zangetsu ${{ github.ref_name }}
+          generate_release_notes: true
+          files: release-assets/*.apk
+          fail_on_unmatched_files: true
